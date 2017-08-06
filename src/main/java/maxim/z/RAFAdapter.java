@@ -18,8 +18,8 @@ public class RAFAdapter implements BytesReaderWriter {
     }
 
     @Override
-    public void readBytes(byte[] data, int offset, int length) throws IOException {
-        randomAccessFile.readFully(data, offset, length);
+    public void readBytes(byte[] data) throws IOException {
+        randomAccessFile.readFully(data, 0, data.length);
     }
 
     @Override

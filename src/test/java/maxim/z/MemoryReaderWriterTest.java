@@ -10,7 +10,7 @@ public class MemoryReaderWriterTest {
 
     @Test
     public void test() throws IOException {
-        BytesReaderWriter brw = new MemoryReaderWriter(500);
+        BytesReaderWriter brw = new MemoryReaderWriter(0);
         byte[] expected = new byte[]{1, 2, 3};
         brw.write(expected);
         byte[] actual = new byte[3];

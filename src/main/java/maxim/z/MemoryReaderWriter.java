@@ -4,20 +4,31 @@ import java.io.IOException;
 
 class MemoryReaderWriter implements BytesReaderWriter {
 
-    private final byte[] storage;
+    private byte[] storage;
     private int position = 0;
 
-    public MemoryReaderWriter(int length) {
-        this.storage = new byte[length];
+    public MemoryReaderWriter(int initialCapacity) {
+        this.storage = new byte[initialCapacity];
     }
 
     @Override
     public void write(byte[] bytes) throws IOException {
+        ensureCapacityForLength(bytes.length);
         System.arraycopy(bytes, 0, storage, position, bytes.length);
+    }
+
+    private void ensureCapacityForLength(int length) {
+        if (storage.length >= this.position + length) {
+            return;
+        }
+        byte[] oldBytes = storage;
+        storage = new byte[this.position + length];
+        System.arraycopy(oldBytes, 0, storage, 0, oldBytes.length);
     }
 
     @Override
     public void readBytes(byte[] data) throws IOException {
+        ensureCapacityForLength(data.length);
         System.arraycopy(storage, position, data, 0, data.length);
     }
 

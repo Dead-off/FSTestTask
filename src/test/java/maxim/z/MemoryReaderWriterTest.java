@@ -31,12 +31,4 @@ public class MemoryReaderWriterTest {
         expected = new byte[]{1, 2, 4, 5, 6, 0};
         assertArrayEquals(expected, actual);
     }
-
-    @Test(expected = ArrayIndexOutOfBoundsException.class)
-    public void arrayIndexOutOfBoundsExceptionTest() throws IOException {
-        BytesReaderWriter brw = new MemoryReaderWriter(500);
-        brw.seek(490);
-        brw.readBytes(new byte[50]);
-    }
-
 }

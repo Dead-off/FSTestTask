@@ -12,6 +12,7 @@ public class FSConstants {
     final static int FILE_HEADER_LENGTH = 32;
     final static int FILE_NAME_LENGTH = 20;
     final static Charset CHARSET = StandardCharsets.UTF_8;
+    final static String DIRECTORIES_SEPARATOR = "/";
 
     static class Offsets {
         final static int CLUSTERS_COUNT = 20;

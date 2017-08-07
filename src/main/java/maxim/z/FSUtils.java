@@ -1,8 +1,12 @@
 package maxim.z;
 
+import maxim.z.exceptions.EmptyFileNameException;
+import maxim.z.exceptions.IncorrectFilePath;
 import maxim.z.exceptions.IncorrectNameException;
 
 import java.nio.ByteBuffer;
+import java.util.Arrays;
+import java.util.List;
 import java.util.regex.Pattern;
 
 public class FSUtils {
@@ -14,6 +18,7 @@ public class FSUtils {
     }
 
     // TODO: 07.08.2017 So far it is just comment. Refactor it.
+
     /**
      * Return byte array, that contains meta information for file. This byte array
      * have next structure:
@@ -64,4 +69,22 @@ public class FSUtils {
         return NAME_PATTERN.matcher(name).matches();
     }
 
+    public static String[] parseFileNames(File file) {
+        if (file.path.isEmpty()) {
+            throw new EmptyFileNameException();
+        }
+        if (!file.path.startsWith(FSConstants.DIRECTORIES_SEPARATOR)) {
+            throw new IncorrectFilePath();
+        }
+        String pathWithoutFirstSeparator = file.path.substring(FSConstants.DIRECTORIES_SEPARATOR.length());
+        if (pathWithoutFirstSeparator.isEmpty()) {
+            return new String[0];
+        }
+        String[] names = pathWithoutFirstSeparator.split(FSConstants.DIRECTORIES_SEPARATOR);
+        boolean existIncorrectNames = Arrays.stream(names).filter(s -> !FSUtils.isCorrectName(s)).count() > 0;
+        if (existIncorrectNames) {
+            throw new IncorrectNameException();
+        }
+        return names;
+    }
 }

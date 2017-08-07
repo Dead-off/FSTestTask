@@ -38,10 +38,12 @@ public class FSUtils {
         byte[] result = new byte[FSConstants.FILE_HEADER_LENGTH];
 
         String nameWithSpaces = getNameWithSpaces(name);
-        System.arraycopy(nameWithSpaces.getBytes(FSConstants.CHARSET), 0, result, 0, FSConstants.FILE_HEADER_LENGTH);
+        System.arraycopy(nameWithSpaces.getBytes(FSConstants.CHARSET), 0, result, 0, FSConstants.FILE_NAME_LENGTH);
         result[FSConstants.FILE_NAME_LENGTH + 1] = (byte) (isDirectory ? 1 : 0);
         writeIntAsBytesToArray(result, FSConstants.FileHeaderOffsets.FILE_CLUSTER, clusterNumber);
-        writeIntAsBytesToArray(result, FSConstants.FileHeaderOffsets.FILE_SIZE, size);
+        if (!isDirectory) {
+            writeIntAsBytesToArray(result, FSConstants.FileHeaderOffsets.FILE_SIZE, size);
+        }
         return result;
     }
 

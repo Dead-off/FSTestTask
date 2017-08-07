@@ -7,7 +7,7 @@ import java.util.regex.Pattern;
 
 public class FSUtils {
 
-    private final static Pattern NAME_PATTERN = Pattern.compile(String.format("^[A-Za-z0-9-_]{1, %s}$", FSConstants.FILE_NAME_LENGTH));
+    private final static Pattern NAME_PATTERN = Pattern.compile(String.format("^[A-Za-z0-9-_]{1,%s}$", FSConstants.FILE_NAME_LENGTH));
 
     public static byte[] intAsFourBytes(int value) {
         return ByteBuffer.allocate(4).putInt(value).array();

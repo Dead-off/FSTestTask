@@ -69,22 +69,4 @@ public class FSUtils {
         return NAME_PATTERN.matcher(name).matches();
     }
 
-    public static String[] parseFileNames(File file) {
-        if (file.path.isEmpty()) {
-            throw new EmptyFileNameException();
-        }
-        if (!file.path.startsWith(FSConstants.DIRECTORIES_SEPARATOR)) {
-            throw new IncorrectFilePath();
-        }
-        String pathWithoutFirstSeparator = file.path.substring(FSConstants.DIRECTORIES_SEPARATOR.length());
-        if (pathWithoutFirstSeparator.isEmpty()) {
-            return new String[0];
-        }
-        String[] names = pathWithoutFirstSeparator.split(FSConstants.DIRECTORIES_SEPARATOR);
-        boolean existIncorrectNames = Arrays.stream(names).filter(s -> !FSUtils.isCorrectName(s)).count() > 0;
-        if (existIncorrectNames) {
-            throw new IncorrectNameException();
-        }
-        return names;
-    }
 }

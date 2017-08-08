@@ -1,30 +1,46 @@
 package maxim.z;
 
+import maxim.z.exceptions.IncorrectFilePath;
+import maxim.z.exceptions.IncorrectNameException;
 import org.junit.Test;
 
+import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
 
 public class FileTest {
 
     @Test
-    public void getFileTest() {
-        File firstFile = File.getFile("/test");
-        assertEquals(false, firstFile.isDirectory);
-        assertEquals("/test", firstFile.path);
+    public void parseFileNamesTest() {
+        File file = File.getFile("/test/from");
+        String[] actual = file.parseFileNames();
+        String[] expected = new String[]{"test", "from"};
+        assertArrayEquals(expected, actual);
 
-        File secondFile = File.getFile("test///file");
-        assertEquals(false, secondFile.isDirectory);
-        assertEquals("test///file", secondFile.path);
+        file = File.getFile("/test/from/test1");
+        actual = file.parseFileNames();
+        expected = new String[]{"test", "from", "test1"};
+        assertArrayEquals(expected, actual);
+
+        file = File.getFile("/");
+        actual = file.parseFileNames();
+        expected = new String[]{};
+        assertArrayEquals(expected, actual);
+
+        file = File.getFile("/abcd");
+        actual = file.parseFileNames();
+        expected = new String[]{"abcd"};
+        assertArrayEquals(expected, actual);
     }
 
-    @Test
-    public void getDirectoryTest() {
-        File firstDir = File.getDirectory("/test///");
-        assertEquals(true, firstDir.isDirectory);
-        assertEquals("/test///", firstDir.path);
-
-        File secondDirectory = File.getDirectory("test//directory");
-        assertEquals(true, secondDirectory.isDirectory);
-        assertEquals("test//directory", secondDirectory.path);
+    @Test(expected = IncorrectNameException.class)
+    public void parseFileNamesIncorrectNameTest() {
+        File.getFile("/?").parseFileNames();
     }
+
+    @Test(expected = IncorrectFilePath.class)
+    public void parseFileNamesIgnoreRootTest() {
+        File.getFile("abc").parseFileNames();
+    }
+
+
 }

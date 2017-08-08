@@ -97,34 +97,4 @@ public class FSUtilsTest {
         assertEquals(false, FSUtils.isCorrectName("abcdeabcdttteabcdeabcde"));
         assertEquals(true, FSUtils.isCorrectName("abcdeabcdeabcdeabcde"));
     }
-
-    @Test
-    public void parseFileNamesTest() {
-        String[] actual = FSUtils.parseFileNames(File.getFile("/test/from"));
-        String[] expected = new String[]{"test", "from"};
-        assertArrayEquals(expected, actual);
-
-        actual = FSUtils.parseFileNames(File.getDirectory("/test/from"));
-        expected = new String[]{"test", "from"};
-        assertArrayEquals(expected, actual);
-
-        actual = FSUtils.parseFileNames(File.getDirectory("/"));
-        expected = new String[]{};
-        assertArrayEquals(expected, actual);
-
-        actual = FSUtils.parseFileNames(File.getDirectory("/abcd"));
-        expected = new String[]{"abcd"};
-        assertArrayEquals(expected, actual);
-    }
-
-    @Test(expected = IncorrectNameException.class)
-    public void parseFileNamesIncorrectNameTest() {
-        FSUtils.parseFileNames(File.getFile("/?"));
-    }
-
-    @Test(expected = IncorrectFilePath.class)
-    public void parseFileNamesIgnoreRootTest() {
-        FSUtils.parseFileNames(File.getFile("abc"));
-    }
-
 }

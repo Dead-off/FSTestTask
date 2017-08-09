@@ -21,10 +21,5 @@ public class FSConstants {
         final static int FAT_TABLE = 64;
     }
 
-    static class FileHeaderOffsets {
-        final static int FILE_SIZE = 28;
-        final static int FILE_CLUSTER = 24;
-    }
-
 
 }

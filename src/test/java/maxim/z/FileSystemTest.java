@@ -6,6 +6,7 @@ import org.junit.Test;
 import java.io.IOException;
 
 import static org.junit.Assert.assertArrayEquals;
+import static org.junit.Assert.assertEquals;
 
 public class FileSystemTest {
 
@@ -31,7 +32,7 @@ public class FileSystemTest {
     @Test
     public void initTest() throws IOException {
         BytesReaderWriter brw = new MemoryReaderWriter(0);
-        FileSystem fs = FileSystem.getFileSystem(brw);
+        FileSystem fs = FileSystem.getFileSystem(brw, FSConstants.DEFAULT_CLUSTER_COUNT, FSConstants.DEFAULT_CLUSTER_SIZE);
         fs.init();
         byte[] actual = new byte[FSConstants.Offsets.FAT_TABLE + FSConstants.DEFAULT_CLUSTER_COUNT * FSConstants.BYTE_DEPTH + FSConstants.DEFAULT_CLUSTER_SIZE];
         byte[] expected = getCopyOfEmptyRootArray();
@@ -42,6 +43,31 @@ public class FileSystemTest {
 
     @Test
     public void fsTest() throws IOException {
+        BytesReaderWriter brw = new MemoryReaderWriter(0);
+        FileSystem fs = FileSystem.getFileSystem(brw, FSConstants.DEFAULT_CLUSTER_COUNT, FSConstants.DEFAULT_CLUSTER_SIZE);
+        fs.init();
+        File root =File.getFile("/");
+        assertEquals(0, fs.getFilesList(root).size());
+        fs.createFile(root, "testName");
+        assertEquals(1, fs.getFilesList(root).size());
+        fs.createDirectory(root, "testDirectory");
+        assertEquals(2, fs.getFilesList(root).size());
+        fs.write(File.getFile("/testName"), "abcd");
+        assertEquals("abcd", fs.readAsString(File.getFile("/testName")));
+        fs.removeFile(File.getFile("/testName"));
+        assertEquals(1, fs.getFilesList(root).size());
+        assertEquals(0, fs.getFilesList(File.getFile("/testDirectory")).size());
+        fs.createDirectory(File.getFile("/testDirectory"), "dir");
+        assertEquals(1, fs.getFilesList(root).size());
+        assertEquals(1, fs.getFilesList(File.getFile("/testDirectory")).size());
+
+        // TODO: 10.08.2017 Более серьезные теасты. Попробовать записывать контент, который не ввлезает в один кластер
+        // попробовать записывать контент поверх существующего с 3мя случаями: существующий влезате в 3 кластера, а прерыдущий был в 4+, обратный  вариант (4 против 3
+        //и равное кол-во
+        //осздание и удаление директорий более серьезное с большей вложенностью, тесты на считывание контента и т.п.
+
+        //отрицательные тесты (попытка прочитать данные с директории, зайти в файл, записать в директорию, создать файл в файле и т.п.
+
 
     }
 

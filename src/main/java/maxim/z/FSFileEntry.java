@@ -1,9 +1,8 @@
 package maxim.z;
 
-import java.lang.reflect.Array;
 import java.util.Arrays;
 
-public class FSFileEntry {
+class FSFileEntry {
 
     private final static int FILE_SIZE_OFFSET = 28;
     private final static int FILE_ATTRIBUTES_OFFSET = 20;
@@ -12,13 +11,13 @@ public class FSFileEntry {
     private final static int DIRECTORY_ATTRIBUTE_BIT = 0B00000001;
     private final static int REMOVED_ATTRIBUTE_BIT = 0B00000010;
 
-    public final String name;
-    public final boolean isDirectory;
-    public final int size;
-    public final int clusterNumber;
-    public final boolean isRemoved;
+    String name;
+    final boolean isDirectory;
+    int size;
+    final int clusterNumber;
+    private boolean isRemoved;
 
-    public static final FSFileEntry EMPTY_ROOT = new FSFileEntry("", true, 0, 0, false);
+    static final FSFileEntry EMPTY_ROOT = new FSFileEntry("", true, 0, 0, false);
 
     private FSFileEntry(String name, boolean isDirectory, int size, int clusterNumber, boolean isRemoved) {
         this.name = name;
@@ -26,6 +25,14 @@ public class FSFileEntry {
         this.size = size;
         this.clusterNumber = clusterNumber;
         this.isRemoved = isRemoved;
+    }
+
+    void remove() {
+        isRemoved=true;
+    }
+
+    boolean isRemoved() {
+        return isRemoved;
     }
 
     // TODO: 09.08.2017 tests
@@ -48,14 +55,14 @@ public class FSFileEntry {
     }
 
     private static boolean attribyteByMask(byte attributeByte, int mask) {
-        return (attributeByte & mask) == 1;
+        return (attributeByte & mask) != 0;
     }
 
     private static boolean getRemovedAttribute(byte attributeByte) {
         return attribyteByMask(attributeByte, REMOVED_ATTRIBUTE_BIT);
     }
 
-    public byte[] toByteArray() {
+    byte[] toByteArray() {
         byte[] nameBytes = FSUtils.getNameWithSpaces(name).getBytes(FSConstants.CHARSET);
         byte attributes = getAttributeByte();
         byte[] result = new byte[FSConstants.FILE_HEADER_LENGTH];

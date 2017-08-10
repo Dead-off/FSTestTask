@@ -11,36 +11,24 @@ public class FileTest {
 
     @Test
     public void parseFileNamesTest() {
-        File file = File.getFile("/test/from");
+        File file = File.fromPath("test/from");
         String[] actual = file.parseFileNames();
         String[] expected = new String[]{"test", "from"};
         assertArrayEquals(expected, actual);
 
-        file = File.getFile("/test/from/test1");
+        file = File.fromPath("test/from/test1");
         actual = file.parseFileNames();
         expected = new String[]{"test", "from", "test1"};
         assertArrayEquals(expected, actual);
 
-        file = File.getFile("/");
+        file = File.fromPath("");
         actual = file.parseFileNames();
         expected = new String[]{};
         assertArrayEquals(expected, actual);
 
-        file = File.getFile("/abcd");
+        file = File.fromPath("abcd");
         actual = file.parseFileNames();
         expected = new String[]{"abcd"};
         assertArrayEquals(expected, actual);
     }
-
-    @Test(expected = IncorrectNameException.class)
-    public void parseFileNamesIncorrectNameTest() {
-        File.getFile("/?").parseFileNames();
-    }
-
-    @Test(expected = IncorrectFilePath.class)
-    public void parseFileNamesIgnoreRootTest() {
-        File.getFile("abc").parseFileNames();
-    }
-
-
 }

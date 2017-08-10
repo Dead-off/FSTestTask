@@ -1,40 +1,37 @@
 package maxim.z;
 
-import maxim.z.exceptions.EmptyFileNameException;
-import maxim.z.exceptions.IncorrectFilePath;
-import maxim.z.exceptions.IncorrectNameException;
-
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.List;
+import java.util.stream.Collectors;
 
 public class File {
 
-    public final String path;
+    private final List<String> directories;
 
-    private File(String path) {
-        this.path = path;
+    private File() {
+        this.directories = new ArrayList<>();
     }
 
-    public static File getFile(String path) {
-        return new File(path);
+    public static File rootInstance() {
+        return new File();
+    }
+
+    static File fromPath(String path) {
+        File pathFile = new File();
+        pathFile.directories.addAll(Arrays.stream(path.split(FSConstants.DIRECTORIES_SEPARATOR))
+                .filter(s->!s.isEmpty()).collect(Collectors.toList()));
+        return pathFile;
+    }
+
+    public File child(String name) {
+        File child = new File();
+        child.directories.addAll(directories);
+        child.directories.add(name);
+        return child;
     }
 
     public String[] parseFileNames() {
-        if (path.isEmpty()) {
-            throw new EmptyFileNameException();
-        }
-        if (!path.startsWith(FSConstants.DIRECTORIES_SEPARATOR)) {
-            throw new IncorrectFilePath();
-        }
-        String pathWithoutFirstSeparator = path.substring(FSConstants.DIRECTORIES_SEPARATOR.length());
-        if (pathWithoutFirstSeparator.isEmpty()) {
-            return new String[0];
-        }
-        String[] names = pathWithoutFirstSeparator.split(FSConstants.DIRECTORIES_SEPARATOR);
-        boolean existIncorrectNames = Arrays.stream(names).filter(s -> !FSUtils.isCorrectName(s)).count() > 0;
-        if (existIncorrectNames) {
-            throw new IncorrectNameException();
-        }
-        return names;
+        return directories.toArray(new String[directories.size()]);
     }
-    
 }

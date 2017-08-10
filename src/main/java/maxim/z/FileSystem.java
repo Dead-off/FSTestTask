@@ -77,6 +77,29 @@ public class FileSystem implements Closeable {
         seekAndWrite(pos, FSUtils.intAsFourBytes(writeInt));
     }
 
+    private void clearFATChain(int firstCluster) throws IOException {
+        int curCluster = firstCluster;
+        int nextCluster;
+        do {
+            nextCluster = FSUtils.readIntFromFsOnOffset(readerWriter, getClusterOffset(curCluster));
+            readerWriter.seek(getClusterOffset(curCluster));
+            readerWriter.write(FSUtils.intAsFourBytes(0));
+            curCluster = nextCluster;
+        } while (nextCluster != FSConstants.END_OF_CHAIN);
+    }
+
+    private void createFATChain(List<Integer> clusterIndexes) throws IOException {
+        for (int i = 0; i < clusterIndexes.size() - 1; i++) {
+            int curClusterIndex = clusterIndexes.get(i);
+            int nextClusterIndex = clusterIndexes.get(i + 1);
+            readerWriter.seek(getClusterOffset(curClusterIndex));
+            readerWriter.write(FSUtils.intAsFourBytes(nextClusterIndex));
+        }
+        int lastCluster = clusterIndexes.get(clusterIndexes.size() - 1);
+        readerWriter.seek(getClusterOffset(lastCluster));
+        readerWriter.write(FSUtils.intAsFourBytes(FSConstants.END_OF_CHAIN));
+    }
+
 
     public void write(File file, String content) throws IOException {
         write(file, content.getBytes(FSConstants.CHARSET));
@@ -84,59 +107,34 @@ public class FileSystem implements Closeable {
 
     public void write(File file, byte[] content) throws IOException {
         int fileCluster = findFileCluster(file);
-        int clusterOffset = getClusterOffset(fileCluster);
-        int nextClusterInChain = FSUtils.readIntFromFsOnOffset(readerWriter, clusterOffset);
         readerWriter.seek(getClusterDataOffset(fileCluster));
         byte[] currentClusterData = new byte[clusterSize];
         readerWriter.readBytes(currentClusterData);
         FSFileEntry currentFile = FSFileEntry.fromByteArray(currentClusterData);
         currentFile.size = content.length;
-        readerWriter.seek(getClusterDataOffset(fileCluster));
-        readerWriter.write(currentFile.toByteArray());
-        readerWriter.seek(getClusterDataOffset(fileCluster) + FSConstants.FILE_HEADER_LENGTH);
-        if (content.length <= clusterSize - FSConstants.FILE_HEADER_LENGTH) {
-            readerWriter.write(content);
-        } else {
-            readerWriter.write(Arrays.copyOfRange(content, 0, clusterSize - FSConstants.FILE_HEADER_LENGTH));
-            if (nextClusterInChain == FSConstants.END_OF_CHAIN) {
-                int freeCluster = getFirstFreeCluster();
-                readerWriter.seek(clusterOffset);
-                readerWriter.write(FSUtils.intAsFourBytes(freeCluster));
-                nextClusterInChain = freeCluster;
-            }
-            int writeBytes = clusterSize - FSConstants.FILE_HEADER_LENGTH;
-            while (true) {
-                readerWriter.seek(getClusterDataOffset(nextClusterInChain));
-                int bytesForWrite = (content.length - writeBytes > clusterSize) ? clusterSize : content.length - writeBytes;
-                byte[] toWrite = Arrays.copyOfRange(content, writeBytes, bytesForWrite);
-                readerWriter.write(toWrite);
-                writeBytes += bytesForWrite;
-                if (writeBytes == content.length) {
-                    break;
-                }
-                if (nextClusterInChain == FSConstants.END_OF_CHAIN) {
-                    readerWriter.seek(getClusterOffset(nextClusterInChain));
-                    nextClusterInChain = getFirstFreeCluster();
-                    readerWriter.write(FSUtils.intAsFourBytes(nextClusterInChain));
-                } else {
-                    nextClusterInChain = FSUtils.readIntFromFsOnOffset(readerWriter, getClusterOffset(nextClusterInChain));
-                }
-            }
-        }
-        if (nextClusterInChain != FSConstants.END_OF_CHAIN) {
-            readerWriter.seek(getClusterOffset(nextClusterInChain));
-            nextClusterInChain = FSUtils.readIntFromFsOnOffset(readerWriter, getClusterOffset(nextClusterInChain));
-            readerWriter.seek(getClusterOffset(nextClusterInChain));
-            readerWriter.write(FSUtils.intAsFourBytes(FSConstants.END_OF_CHAIN));
-            nextClusterInChain = FSUtils.readIntFromFsOnOffset(readerWriter, getClusterOffset(nextClusterInChain));
-            while (nextClusterInChain != FSConstants.END_OF_CHAIN) {
-                readerWriter.seek(getClusterOffset(nextClusterInChain));
-                readerWriter.write(FSUtils.intAsFourBytes(0));
-                nextClusterInChain = FSUtils.readIntFromFsOnOffset(readerWriter, getClusterOffset(nextClusterInChain));
-            }
-            readerWriter.seek(getClusterOffset(nextClusterInChain));
-            readerWriter.write(FSUtils.intAsFourBytes(0));
-        }
+        byte[] contentWithHeader = getContentWithHeader(content, currentFile.toByteArray());
+
+        clearFATChain(fileCluster);
+        int writeBytes = 0;
+        List<Integer> usedClusterIndexes = new ArrayList<>();
+        int clusterForWrite = fileCluster;
+        do {
+            readerWriter.seek(getClusterDataOffset(clusterForWrite));
+            int bytesToWrite = Math.min(clusterSize, contentWithHeader.length - writeBytes);
+            readerWriter.write(Arrays.copyOfRange(contentWithHeader, writeBytes, writeBytes + bytesToWrite));
+            usedClusterIndexes.add(clusterForWrite);
+            clusterForWrite = getFirstFreeCluster(clusterForWrite+1);//todo bad, better is set temp value eg -2, but try find with start from 0
+            writeBytes += bytesToWrite;
+        } while (writeBytes != contentWithHeader.length);
+
+        createFATChain(usedClusterIndexes);
+    }
+
+    private byte[] getContentWithHeader(byte[] content, byte[] header) {
+        byte[] result = new byte[content.length + FSConstants.FILE_HEADER_LENGTH];
+        System.arraycopy(content, 0, result, FSConstants.FILE_HEADER_LENGTH, content.length);
+        System.arraycopy(header, 0, result, 0, header.length);
+        return result;
     }
 
     public byte[] read(File file) throws IOException {
@@ -148,7 +146,7 @@ public class FileSystem implements Closeable {
         return new String(read(file), FSConstants.CHARSET);
     }
 
-    public void createFile(File parent, String newFileName) throws IOException {
+    public File createFile(File parent, String newFileName) throws IOException {
         int freeCluster = getFirstFreeCluster();
         setFATClusterValue(freeCluster, FSConstants.END_OF_CHAIN);
         FSFileEntry newFile = FSFileEntry.from(newFileName, false, freeCluster);
@@ -160,6 +158,7 @@ public class FileSystem implements Closeable {
         byte[] pointerToNewFile = FSUtils.intAsFourBytes(freeCluster);
         System.arraycopy(pointerToNewFile, 0, newContent, currentBytes.length, pointerToNewFile.length);
         write(parent, newContent);
+        return parent.child(newFileName);
     }
 
     private void setFATClusterValue(int clusterIndex, int clusterValue) throws IOException {
@@ -167,7 +166,7 @@ public class FileSystem implements Closeable {
         readerWriter.write(FSUtils.intAsFourBytes(clusterValue));
     }
 
-    public void createDirectory(File parent, String newDirectoryName) throws IOException {
+    public File createDirectory(File parent, String newDirectoryName) throws IOException {
         int freeCluster = getFirstFreeCluster();
         setFATClusterValue(freeCluster, FSConstants.END_OF_CHAIN);
         FSFileEntry newFile = FSFileEntry.from(newDirectoryName, true, freeCluster);
@@ -178,18 +177,21 @@ public class FileSystem implements Closeable {
         byte[] pointerToNewFile = FSUtils.intAsFourBytes(freeCluster);
         System.arraycopy(pointerToNewFile, 0, newContent, currentBytes.length, pointerToNewFile.length);
         write(parent, newContent);
+        return parent.child(newDirectoryName);
     }
-
-    private int getFirstFreeCluster() throws IOException {
-        // TODO: 09.08.2017 use header value
-        for (int i = 0; i < clusterCount; i++) {
+    private int getFirstFreeCluster(int startFrom) throws IOException {
+        for (int i = startFrom; i < clusterCount; i++) {
             int clusterOffset = getClusterOffset(i);
             int nextClusterInChain = FSUtils.readIntFromFsOnOffset(readerWriter, clusterOffset);
             if (nextClusterInChain == 0) {
                 return i;
             }
         }
-        throw new IOException("DONT FOUND FREE CLUSTER");
+        throw new IOException("Don't found free cluster");
+    }
+
+    private int getFirstFreeCluster() throws IOException {
+        return getFirstFreeCluster(0);
     }
 
     public void removeFile(File file) throws IOException {
@@ -204,7 +206,9 @@ public class FileSystem implements Closeable {
         readerWriter.seek(getClusterDataOffset(fileCluster));
         readerWriter.write(currentFile.toByteArray());
         String[] fileNames = file.parseFileNames();
-        File parentFile = File.getFile(Arrays.stream(fileNames).limit(fileNames.length - 1).reduce((s1, s2) -> s1 + "/" + s2).orElse("/"));
+        File parentFile = File.fromPath(Arrays.stream(fileNames).limit(fileNames.length - 1)
+                .reduce((s1, s2) -> s1 + FSConstants.DIRECTORIES_SEPARATOR + s2)
+                .orElse(FSConstants.DIRECTORIES_SEPARATOR));
         byte[] currentContent = read(parentFile);
         int idxLink = -1;
         for (int i = 0; i < currentContent.length; i += 4) {

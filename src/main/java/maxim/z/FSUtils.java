@@ -29,22 +29,6 @@ public class FSUtils {
         return intFromFourBytes(bytes);
     }
 
-//    public static byte[] getFileHeaderBytes(String name, int clusterNumber, int size, boolean isDirectory) {
-//        if (!isCorrectName(name)) {
-//            throw new IncorrectNameException();
-//        }
-//        byte[] result = new byte[FSConstants.FILE_HEADER_LENGTH];
-//
-//        String nameWithSpaces = getNameWithSpaces(name);
-//        System.arraycopy(nameWithSpaces.getBytes(FSConstants.CHARSET), 0, result, 0, FSConstants.FILE_NAME_LENGTH);
-//        result[FSConstants.FILE_NAME_LENGTH + 1] = (byte) (isDirectory ? 1 : 0);
-//        writeIntAsBytesToArray(result, FSConstants.FileHeaderOffsets.FILE_CLUSTER, clusterNumber);
-//        if (!isDirectory) {
-//            writeIntAsBytesToArray(result, FSConstants.FileHeaderOffsets.FILE_SIZE, size);
-//        }
-//        return result;
-//    }
-
     public static void writeIntAsBytesToArray(byte[] destArr, int destPosition, int value) {
         byte[] bytes = intAsFourBytes(value);
         System.arraycopy(bytes, 0, destArr, destPosition, bytes.length);

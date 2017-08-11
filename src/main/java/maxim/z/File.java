@@ -41,6 +41,10 @@ public class File {
         return result;
     }
 
+    public String getPath() {
+        return FSConstants.DIRECTORIES_SEPARATOR + String.join(FSConstants.DIRECTORIES_SEPARATOR, this.directories);
+    }
+
     private void dropLastDirectory() {
         this.directories.remove(this.directories.size() - 1);
     }

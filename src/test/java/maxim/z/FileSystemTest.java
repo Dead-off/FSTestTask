@@ -1,13 +1,12 @@
 package maxim.z;
 
+import maxim.z.exceptions.*;
 import org.junit.Before;
 import org.junit.Test;
 
 import java.io.IOException;
-import java.util.Arrays;
 
-import static org.junit.Assert.assertArrayEquals;
-import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.*;
 
 public class FileSystemTest {
 
@@ -49,16 +48,6 @@ public class FileSystemTest {
         fs.init();
         File root = File.rootInstance();
 
-
-
-
-
-
-
-
-
-
-
         assertEquals(0, fs.getFilesList(root).size());
         File testFile = fs.createFile(root, "testFile");
         assertEquals(1, fs.getFilesList(root).size());
@@ -85,17 +74,44 @@ public class FileSystemTest {
         assertArrayEquals(largeByteContent, fs.read(fileLevel2));
 
         largeByteContent = new byte[FSConstants.DEFAULT_CLUSTER_SIZE * 7];
+        largeByteContent[FSConstants.DEFAULT_CLUSTER_SIZE] = 1;
         fs.write(fileLevel2, largeByteContent);
         assertArrayEquals(largeByteContent, fs.read(fileLevel2));
 
+        largeByteContent = new byte[FSConstants.DEFAULT_CLUSTER_SIZE * 7];
+        largeByteContent[FSConstants.DEFAULT_CLUSTER_SIZE * 2] = 3;
+        fs.write(fileLevel2, largeByteContent);
+        assertArrayEquals(largeByteContent, fs.read(fileLevel2));
 
-        // TODO: 10.08.2017 Более серьезные теасты. Попробовать записывать контент, который не ввлезает в один кластер
-        // попробовать записывать контент поверх существующего с 3мя случаями: существующий влезате в 3 кластера, а прерыдущий был в 4+, обратный  вариант (4 против 3
-        //и равное кол-во
-        //осздание и удаление директорий более серьезное с большей вложенностью, тесты на считывание контента и т.п.
+        try {
+            fs.write(testDirectory, "abcd");
+            fail();
+        } catch (WriteException ignored) {
+        }
 
-        //отрицательные тесты (попытка прочитать данные с директории, зайти в файл, записать в директорию, создать файл в файле и т.п.
+        try {
+            fs.read(testDirectory);
+            fail();
+        } catch (ReadException ignored) {
+        }
 
+        try {
+            fs.createFile(fileLevel2, "abc");
+            fail();
+        } catch (CreateFileException ignored) {
+        }
+
+        try {
+            fs.createFile(testDirectory, "incorrect/name");
+            fail();
+        } catch (IncorrectNameException ignored) {
+        }
+
+        try {
+            fs.removeFile(fileLevel2.child("notExist"));
+            fail();
+        } catch (FileNotFoundException ignored) {
+        }
 
     }
 

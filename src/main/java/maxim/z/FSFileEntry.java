@@ -44,7 +44,7 @@ class FSFileEntry {
     static FSFileEntry fromByteArray(byte[] array) {
         byte[] fileNameBytes = Arrays.copyOfRange(array, 0, FSConstants.FILE_NAME_LENGTH);
         String name = new String(fileNameBytes, FSConstants.CHARSET).trim();
-        byte attributeByte = Arrays.copyOfRange(array, FILE_ATTRIBUTES_OFFSET, FILE_ATTRIBUTES_OFFSET + 1)[0];
+        byte attributeByte = array[FILE_ATTRIBUTES_OFFSET];
         int clusterNumber = FSUtils.intFromFourBytes(Arrays.copyOfRange(array, FILE_CLUSTER_OFFSET, FILE_CLUSTER_OFFSET + FSConstants.BYTE_DEPTH));
         int fileSize = FSUtils.intFromFourBytes(Arrays.copyOfRange(array, FILE_SIZE_OFFSET, FILE_SIZE_OFFSET + FSConstants.BYTE_DEPTH));
         return new FSFileEntry(name, getDirectoryBoolean(attributeByte), fileSize, clusterNumber, getRemovedAttribute(attributeByte));

@@ -20,7 +20,7 @@ public class File {
     static File fromPath(String path) {
         File pathFile = new File();
         pathFile.directories.addAll(Arrays.stream(path.split(FSConstants.DIRECTORIES_SEPARATOR))
-                .filter(s->!s.isEmpty()).collect(Collectors.toList()));
+                .filter(s -> !s.isEmpty()).collect(Collectors.toList()));
         return pathFile;
     }
 
@@ -31,7 +31,25 @@ public class File {
         return child;
     }
 
+    public File parent() {
+        File result = new File();
+        result.directories.addAll(this.directories);
+        if (result.isRootFile()) {
+            return result;
+        }
+        result.dropLastDirectory();
+        return result;
+    }
+
+    private void dropLastDirectory() {
+        this.directories.remove(this.directories.size() - 1);
+    }
+
     public String[] parseFileNames() {
         return directories.toArray(new String[directories.size()]);
+    }
+
+    public boolean isRootFile() {
+        return this.directories.size() == 0;
     }
 }

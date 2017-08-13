@@ -5,7 +5,7 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.stream.Collectors;
 
-public class File {
+public class File implements IFile {
 
     private final List<String> directories;
 
@@ -24,6 +24,7 @@ public class File {
         return pathFile;
     }
 
+    @Override
     public File child(String name) {
         File child = new File();
         child.directories.addAll(directories);
@@ -31,6 +32,7 @@ public class File {
         return child;
     }
 
+    @Override
     public File parent() {
         File result = new File();
         result.directories.addAll(this.directories);
@@ -41,6 +43,7 @@ public class File {
         return result;
     }
 
+    @Override
     public String getPath() {
         return FSConstants.DIRECTORIES_SEPARATOR + String.join(FSConstants.DIRECTORIES_SEPARATOR, this.directories);
     }
@@ -49,11 +52,12 @@ public class File {
         this.directories.remove(this.directories.size() - 1);
     }
 
+    @Override
     public String[] parseFileNames() {
         return directories.toArray(new String[directories.size()]);
     }
 
-    public boolean isRootFile() {
+    private boolean isRootFile() {
         return this.directories.size() == 0;
     }
 }

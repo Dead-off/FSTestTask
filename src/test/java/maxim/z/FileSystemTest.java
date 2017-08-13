@@ -49,9 +49,9 @@ public class FileSystemTest {
         File root = File.rootInstance();
 
         assertEquals(0, fs.getFilesList(root).size());
-        File testFile = fs.createFile(root, "testFile");
+        IFile testFile = fs.createFile(root, "testFile");
         assertEquals(1, fs.getFilesList(root).size());
-        File testDirectory = fs.createDirectory(root, "testDirectory");
+        IFile testDirectory = fs.createDirectory(root, "testDirectory");
         assertEquals(2, fs.getFilesList(root).size());
         String contentString = "abcd";
         fs.write(testFile, contentString);
@@ -59,10 +59,10 @@ public class FileSystemTest {
         fs.removeFile(testFile);
         assertEquals(1, fs.getFilesList(root).size());
         assertEquals(0, fs.getFilesList(testDirectory).size());
-        File dirLevel2 = fs.createDirectory(testDirectory, "dir");
+        IFile dirLevel2 = fs.createDirectory(testDirectory, "dir");
         assertEquals(1, fs.getFilesList(root).size());
         assertEquals(1, fs.getFilesList(testDirectory).size());
-        File fileLevel2 = fs.createFile(dirLevel2, "testFile");
+        IFile fileLevel2 = fs.createFile(dirLevel2, "testFile");
         assertArrayEquals(new byte[]{}, fs.read(fileLevel2));
 
         byte[] largeByteContent = new byte[FSConstants.DEFAULT_CLUSTER_SIZE * 5];

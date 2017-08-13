@@ -2,13 +2,12 @@ package maxim.z;
 
 import maxim.z.exceptions.*;
 
-import java.io.Closeable;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
-public class FileSystem implements Closeable {
+public class FileSystem implements IFileSystem {
 
     private final BytesReaderWriter readerWriter;
     private final int clusterCount;
@@ -100,11 +99,13 @@ public class FileSystem implements Closeable {
     }
 
 
-    public void write(File file, String content) throws IOException {
+    @Override
+    public void write(IFile file, String content) throws IOException {
         write(file, content.getBytes(FSConstants.CHARSET));
     }
 
-    public void write(File file, byte[] content) throws IOException {
+    @Override
+    public void write(IFile file, byte[] content) throws IOException {
         int fileCluster = findFileCluster(file);
         readerWriter.seek(getClusterDataOffset(fileCluster));
         byte[] currentClusterData = new byte[clusterSize];
@@ -130,7 +131,7 @@ public class FileSystem implements Closeable {
             int bytesToWrite = Math.min(clusterSize, contentWithHeader.length - writeBytes);
             readerWriter.write(Arrays.copyOfRange(contentWithHeader, writeBytes, writeBytes + bytesToWrite));
             usedClusterIndexes.add(clusterForWrite);
-            clusterForWrite = getFirstFreeCluster(clusterForWrite+1);//todo bad, better is set temp value eg -2, but try find with start from 0
+            clusterForWrite = getFirstFreeCluster(clusterForWrite + 1);//todo bad, better is set temp value eg -2, but try find with start from 0
             writeBytes += bytesToWrite;
         } while (writeBytes != contentWithHeader.length);
 
@@ -144,7 +145,8 @@ public class FileSystem implements Closeable {
         return result;
     }
 
-    public byte[] read(File file) throws IOException {
+    @Override
+    public byte[] read(IFile file) throws IOException {
         int fileCluster = findFileCluster(file);
         FSFileEntry fileEntry = getFileEntryFromCluster(fileCluster);
         if (fileEntry.isDirectory) {
@@ -153,11 +155,13 @@ public class FileSystem implements Closeable {
         return getFileContent(fileCluster);
     }
 
-    public String readAsString(File file) throws IOException {
+    @Override
+    public String readAsString(IFile file) throws IOException {
         return new String(read(file), FSConstants.CHARSET);
     }
 
-    public File createFile(File parent, String newFileName) throws IOException {
+    @Override
+    public IFile createFile(IFile parent, String newFileName) throws IOException {
         checkName(newFileName);
         int parentCluster = findFileCluster(parent);
         int clusterForNewFile = getFirstFreeCluster();
@@ -170,7 +174,7 @@ public class FileSystem implements Closeable {
         int clusterDataOffset = getClusterDataOffset(clusterForNewFile);
         readerWriter.seek(clusterDataOffset);
         readerWriter.write(newFile.toByteArray());
-        appendClusterLinkToDirectory(parentCluster,clusterForNewFile);
+        appendClusterLinkToDirectory(parentCluster, clusterForNewFile);
         return parent.child(newFileName);
     }
 
@@ -193,7 +197,8 @@ public class FileSystem implements Closeable {
         readerWriter.write(FSUtils.intAsFourBytes(clusterValue));
     }
 
-    public File createDirectory(File parent, String newDirectoryName) throws IOException {
+    @Override
+    public IFile createDirectory(IFile parent, String newDirectoryName) throws IOException {
         checkName(newDirectoryName);
         int parentCluster = findFileCluster(parent);
         int newDirectoryCluster = getFirstFreeCluster();
@@ -204,6 +209,7 @@ public class FileSystem implements Closeable {
         appendClusterLinkToDirectory(parentCluster, newDirectoryCluster);
         return parent.child(newDirectoryName);
     }
+
     private int getFirstFreeCluster(int startFrom) throws IOException {
         for (int i = startFrom; i < clusterCount; i++) {
             int clusterOffset = getClusterOffset(i);
@@ -226,10 +232,11 @@ public class FileSystem implements Closeable {
         return getFirstFreeCluster(0);
     }
 
-    public void removeFile(File file) throws IOException {
+    @Override
+    public void removeFile(IFile file) throws IOException {
         int fileCluster = findFileCluster(file);
         int clusterOffset = getClusterOffset(fileCluster);
-        File parentFile = file.parent();
+        IFile parentFile = file.parent();
         int parentCluster = findFileCluster(parentFile);
         readerWriter.seek(getClusterDataOffset(fileCluster));
         byte[] currentClusterData = new byte[clusterSize];
@@ -265,7 +272,8 @@ public class FileSystem implements Closeable {
         }
     }
 
-    public List<String> getFilesList(File directory) throws IOException {
+    @Override
+    public List<String> getFilesList(IFile directory) throws IOException {
         int clusterNumber = findFileCluster(directory);
         int nextClusterInChain = FSUtils.readIntFromFsOnOffset(readerWriter, getClusterOffset(clusterNumber));
         readerWriter.seek(getClusterDataOffset(clusterNumber));
@@ -288,7 +296,7 @@ public class FileSystem implements Closeable {
         return result;
     }
 
-    private int findFileCluster(File file) throws IOException {
+    private int findFileCluster(IFile file) throws IOException {
         String[] dirNames = file.parseFileNames();
         int rootCluster = 0;
         if (dirNames.length == 0) {
@@ -305,10 +313,10 @@ public class FileSystem implements Closeable {
         int clusterOffset = getClusterOffset(clusterOfCurrentFile);
         int nextClusterInChain = FSUtils.readIntFromFsOnOffset(readerWriter, clusterOffset);
         readerWriter.seek(getClusterDataOffset(clusterOfCurrentFile));
-        // TODO: 09.08.2017 проверять, что файл не удален
         byte[] currentClusterData = new byte[clusterSize];
         readerWriter.readBytes(currentClusterData);
         FSFileEntry currentFile = FSFileEntry.fromByteArray(currentClusterData);
+        checkThatFileIsNotRemoved(currentFile);
         byte[] content = getFileContent(currentFile, nextClusterInChain, currentClusterData);
         List<Integer> childFilesClusters = new ArrayList<>();
         for (int i = 0; i < content.length; i += 4) {
@@ -316,15 +324,21 @@ public class FileSystem implements Closeable {
         }
         for (int clusterNum : childFilesClusters) {
             readerWriter.seek(getClusterDataOffset(clusterNum));
-            // TODO: 09.08.2017 проверять, что файл не удален
             currentClusterData = new byte[clusterSize];
             readerWriter.readBytes(currentClusterData);
             FSFileEntry childFile = FSFileEntry.fromByteArray(currentClusterData);
+            checkThatFileIsNotRemoved(childFile);
             if (childFile.name.equals(currentName)) {
                 return findFileCluster(clusterNum, fileNames, currentNameIdx + 1);
             }
         }
         throw new FileNotFoundException();
+    }
+
+    private void checkThatFileIsNotRemoved(FSFileEntry file) {
+        if (file.isRemoved()) {
+            throw new FileNotFoundException();
+        }
     }
 
     private byte[] getFileContent(int clusterNumber) throws IOException {

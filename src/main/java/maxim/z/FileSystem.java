@@ -15,7 +15,7 @@ public class FileSystem implements IFileSystem {
 
     // TODO: 09.08.2017 need hard refactoring
 
-    public FileSystem(BytesReaderWriter readerWriter, int clusterCount, int clusterSize) {
+    private FileSystem(BytesReaderWriter readerWriter, int clusterCount, int clusterSize) {
         this.readerWriter = readerWriter;
         this.clusterCount = clusterCount;
         this.clusterSize = clusterSize;
@@ -47,11 +47,18 @@ public class FileSystem implements IFileSystem {
     }
 
     private static int readClusterSize(BytesReaderWriter readerWriter) throws IOException {
-        return FSUtils.readIntFromFsOnOffset(readerWriter, FSConstants.Offsets.CLUSTERS_COUNT);
+        return readIntFromFsOnOffset(readerWriter, FSConstants.Offsets.CLUSTERS_COUNT);
     }
 
     private static int readClusterCount(BytesReaderWriter readerWriter) throws IOException {
-        return FSUtils.readIntFromFsOnOffset(readerWriter, FSConstants.Offsets.CLUSTER_SIZE);
+        return readIntFromFsOnOffset(readerWriter, FSConstants.Offsets.CLUSTER_SIZE);
+    }
+
+    private static int readIntFromFsOnOffset(BytesReaderWriter readerWriter, int offset) throws IOException {
+        readerWriter.seek(offset);
+        byte[] bytes = new byte[FSConstants.BYTE_DEPTH];
+        readerWriter.readBytes(bytes);
+        return FSUtils.intFromFourBytes(bytes);
     }
 
     void init() throws IOException {
@@ -79,7 +86,7 @@ public class FileSystem implements IFileSystem {
         int curCluster = firstCluster;
         int nextCluster;
         do {
-            nextCluster = FSUtils.readIntFromFsOnOffset(readerWriter, getClusterOffset(curCluster));
+            nextCluster = readIntFromFsOnOffset(readerWriter, getClusterOffset(curCluster));
             readerWriter.seek(getClusterOffset(curCluster));
             readerWriter.write(FSUtils.intAsFourBytes(0));
             curCluster = nextCluster;
@@ -213,7 +220,7 @@ public class FileSystem implements IFileSystem {
     private int getFirstFreeCluster(int startFrom) throws IOException {
         for (int i = startFrom; i < clusterCount; i++) {
             int clusterOffset = getClusterOffset(i);
-            int nextClusterInChain = FSUtils.readIntFromFsOnOffset(readerWriter, clusterOffset);
+            int nextClusterInChain = readIntFromFsOnOffset(readerWriter, clusterOffset);
             if (nextClusterInChain == 0) {
                 return i;
             }
@@ -263,7 +270,7 @@ public class FileSystem implements IFileSystem {
         System.arraycopy(currentContent, idxLink + FSConstants.BYTE_DEPTH, newContent, idxLink, newContent.length - idxLink);
         write0(newContent, getFileEntryFromCluster(parentCluster));
         while (true) {
-            int nextClusterInChain = FSUtils.readIntFromFsOnOffset(readerWriter, clusterOffset);
+            int nextClusterInChain = readIntFromFsOnOffset(readerWriter, clusterOffset);
             readerWriter.seek(clusterOffset);
             readerWriter.write(FSUtils.intAsFourBytes(0));
             if (nextClusterInChain == FSConstants.END_OF_CHAIN) {
@@ -275,7 +282,7 @@ public class FileSystem implements IFileSystem {
     @Override
     public List<String> getFilesList(IFile directory) throws IOException {
         int clusterNumber = findFileCluster(directory);
-        int nextClusterInChain = FSUtils.readIntFromFsOnOffset(readerWriter, getClusterOffset(clusterNumber));
+        int nextClusterInChain = readIntFromFsOnOffset(readerWriter, getClusterOffset(clusterNumber));
         readerWriter.seek(getClusterDataOffset(clusterNumber));
         byte[] currentClusterData = new byte[clusterSize];
         readerWriter.readBytes(currentClusterData);
@@ -311,7 +318,7 @@ public class FileSystem implements IFileSystem {
         }
         String currentName = fileNames[currentNameIdx];
         int clusterOffset = getClusterOffset(clusterOfCurrentFile);
-        int nextClusterInChain = FSUtils.readIntFromFsOnOffset(readerWriter, clusterOffset);
+        int nextClusterInChain = readIntFromFsOnOffset(readerWriter, clusterOffset);
         readerWriter.seek(getClusterDataOffset(clusterOfCurrentFile));
         byte[] currentClusterData = new byte[clusterSize];
         readerWriter.readBytes(currentClusterData);
@@ -343,7 +350,7 @@ public class FileSystem implements IFileSystem {
 
     private byte[] getFileContent(int clusterNumber) throws IOException {
         int clusterOffset = getClusterOffset(clusterNumber);
-        int nextClusterInChain = FSUtils.readIntFromFsOnOffset(readerWriter, clusterOffset);
+        int nextClusterInChain = readIntFromFsOnOffset(readerWriter, clusterOffset);
         readerWriter.seek(getClusterDataOffset(clusterNumber));
         byte[] currentClusterData = new byte[clusterSize];
         readerWriter.readBytes(currentClusterData);
@@ -371,7 +378,7 @@ public class FileSystem implements IFileSystem {
             }
             int nextClusterOffset = getClusterDataOffset(nextCluster);
             int fatClusterOffset = getClusterOffset(nextCluster);
-            nextCluster = FSUtils.readIntFromFsOnOffset(readerWriter, fatClusterOffset);
+            nextCluster = readIntFromFsOnOffset(readerWriter, fatClusterOffset);
             readerWriter.seek(nextClusterOffset);
             byte[] currentClusterData = new byte[clusterSize];
             readerWriter.readBytes(currentClusterData);

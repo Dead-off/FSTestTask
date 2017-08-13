@@ -1,13 +1,6 @@
 package maxim.z;
 
-import maxim.z.exceptions.EmptyFileNameException;
-import maxim.z.exceptions.IncorrectFilePath;
-import maxim.z.exceptions.IncorrectNameException;
-
-import java.io.IOException;
 import java.nio.ByteBuffer;
-import java.util.Arrays;
-import java.util.List;
 import java.util.regex.Pattern;
 
 public class FSUtils {
@@ -20,13 +13,6 @@ public class FSUtils {
 
     public static int intFromFourBytes(byte[] bytes) {
         return ByteBuffer.wrap(bytes).getInt();
-    }
-
-    public static int readIntFromFsOnOffset(BytesReaderWriter readerWriter, int offset) throws IOException {
-        readerWriter.seek(offset);
-        byte[] bytes = new byte[FSConstants.BYTE_DEPTH];
-        readerWriter.readBytes(bytes);
-        return intFromFourBytes(bytes);
     }
 
     public static void writeIntAsBytesToArray(byte[] destArr, int destPosition, int value) {

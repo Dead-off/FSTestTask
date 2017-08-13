@@ -113,6 +113,22 @@ public class FileSystemTest {
         } catch (FileNotFoundException ignored) {
         }
 
+        File notExistFile = root.child("notExistDir").child("notExistFile");
+        try {
+            fs.removeFile(notExistFile);
+            fail();
+        } catch (FileNotFoundException ignored) {
+        }
+        try {
+            fs.write(notExistFile, "");
+            fail();
+        } catch (FileNotFoundException ignored) {
+        }
+        try {
+            fs.read(notExistFile);
+            fail();
+        } catch (FileNotFoundException ignored) {
+        }
     }
 
 

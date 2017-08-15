@@ -24,13 +24,13 @@ public class FileSystem implements IFileSystem {
     public static FileSystem getFileSystem(String pathToFile) throws IOException {
         java.io.File fsFile = new java.io.File(pathToFile);
         if (fsFile.exists()) {
-            BytesReaderWriter readerWriter = new RAFAdapter(fsFile);
+            BytesReaderWriter readerWriter = new RAFWrapper(fsFile);
             int clusterCount = readClusterCount(readerWriter);
             int clusterSize = readClusterSize(readerWriter);
             return getFileSystem(readerWriter, clusterCount, clusterSize);
         }
         createFSFile(fsFile);
-        FileSystem fs = new FileSystem(new RAFAdapter(fsFile), FSConstants.DEFAULT_CLUSTER_COUNT, FSConstants.DEFAULT_CLUSTER_SIZE);
+        FileSystem fs = new FileSystem(new RAFWrapper(fsFile), FSConstants.DEFAULT_CLUSTER_COUNT, FSConstants.DEFAULT_CLUSTER_SIZE);
         fs.init();
         return fs;
     }

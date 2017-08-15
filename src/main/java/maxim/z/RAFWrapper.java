@@ -4,11 +4,11 @@ import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.RandomAccessFile;
 
-public class RAFAdapter implements BytesReaderWriter {
+public class RAFWrapper implements BytesReaderWriter {
 
     private final RandomAccessFile randomAccessFile;
 
-    RAFAdapter(java.io.File fsFile) throws FileNotFoundException {
+    RAFWrapper(java.io.File fsFile) throws FileNotFoundException {
         this.randomAccessFile = new RandomAccessFile(fsFile, "rws");
     }
 

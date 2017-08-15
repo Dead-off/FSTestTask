@@ -22,7 +22,7 @@ class MemoryReaderWriter implements BytesReaderWriter {
             return;
         }
         byte[] oldBytes = storage;
-        storage = new byte[this.position + length];
+        storage = new byte[(this.position + length) * 2];
         System.arraycopy(oldBytes, 0, storage, 0, oldBytes.length);
     }
 

@@ -9,6 +9,10 @@ public interface BytesReaderWriter extends Closeable {
 
     void readBytes(byte[] data) throws IOException;
 
+    void seekAndRead(byte[] data, long pos) throws IOException;
+
+    void seekAndWrite(byte[] bytes, long pos) throws IOException;
+
     void seek(long pos) throws IOException;
 
 }

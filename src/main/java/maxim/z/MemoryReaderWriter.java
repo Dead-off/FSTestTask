@@ -38,6 +38,18 @@ class MemoryReaderWriter implements BytesReaderWriter {
     }
 
     @Override
+    public void seekAndRead(byte[] data, long pos) throws IOException {
+        seek(pos);
+        readBytes(data);
+    }
+
+    @Override
+    public void seekAndWrite(byte[] bytes, long pos) throws IOException {
+        seek(pos);
+        write(bytes);
+    }
+
+    @Override
     public void close() throws IOException {
 
     }

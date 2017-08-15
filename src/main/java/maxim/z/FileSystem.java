@@ -7,6 +7,8 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
+import static maxim.z.FSUtils.intAsFourBytes;
+
 public class FileSystem implements IFileSystem {
 
     private final BytesReaderWriter readerWriter;
@@ -62,24 +64,15 @@ public class FileSystem implements IFileSystem {
     }
 
     void init() throws IOException {
-        seekAndWrite(FSConstants.Offsets.CLUSTERS_COUNT, FSConstants.DEFAULT_CLUSTER_COUNT);
-        seekAndWrite(FSConstants.Offsets.LAST_USED_CLUSTER, 0);
-        seekAndWrite(FSConstants.Offsets.CLUSTER_SIZE, FSConstants.DEFAULT_CLUSTER_SIZE);
-        seekAndWrite(FSConstants.Offsets.FAT_TABLE, FSConstants.END_OF_CHAIN);
-        seekAndWrite(getClusterOffset(FSConstants.DEFAULT_CLUSTER_COUNT), FSFileEntry.EMPTY_ROOT.toByteArray());
+        readerWriter.seekAndWrite(intAsFourBytes(clusterCount), FSConstants.Offsets.CLUSTERS_COUNT);
+        readerWriter.seekAndWrite(intAsFourBytes(0), FSConstants.Offsets.LAST_USED_CLUSTER);
+        readerWriter.seekAndWrite(intAsFourBytes(clusterSize), FSConstants.Offsets.CLUSTER_SIZE);
+        readerWriter.seekAndWrite(intAsFourBytes(FSConstants.END_OF_CHAIN), FSConstants.Offsets.FAT_TABLE);
+        readerWriter.seekAndWrite(FSFileEntry.EMPTY_ROOT.toByteArray(), getClusterOffset(FSConstants.DEFAULT_CLUSTER_COUNT));
     }
 
     private int getClusterOffset(int clusterIndex) {
         return FSConstants.Offsets.FAT_TABLE + clusterIndex * FSConstants.BYTE_DEPTH;
-    }
-
-    private void seekAndWrite(long pos, byte[] writeBytes) throws IOException {
-        readerWriter.seek(pos);
-        readerWriter.write(writeBytes);
-    }
-
-    private void seekAndWrite(long pos, int writeInt) throws IOException {
-        seekAndWrite(pos, FSUtils.intAsFourBytes(writeInt));
     }
 
     private void clearFATChain(int firstCluster) throws IOException {
@@ -88,7 +81,7 @@ public class FileSystem implements IFileSystem {
         do {
             nextCluster = readIntFromFsOnOffset(readerWriter, getClusterOffset(curCluster));
             readerWriter.seek(getClusterOffset(curCluster));
-            readerWriter.write(FSUtils.intAsFourBytes(0));
+            readerWriter.write(intAsFourBytes(0));
             curCluster = nextCluster;
         } while (nextCluster != FSConstants.END_OF_CHAIN);
     }
@@ -98,11 +91,11 @@ public class FileSystem implements IFileSystem {
             int curClusterIndex = clusterIndexes.get(i);
             int nextClusterIndex = clusterIndexes.get(i + 1);
             readerWriter.seek(getClusterOffset(curClusterIndex));
-            readerWriter.write(FSUtils.intAsFourBytes(nextClusterIndex));
+            readerWriter.write(intAsFourBytes(nextClusterIndex));
         }
         int lastCluster = clusterIndexes.get(clusterIndexes.size() - 1);
         readerWriter.seek(getClusterOffset(lastCluster));
-        readerWriter.write(FSUtils.intAsFourBytes(FSConstants.END_OF_CHAIN));
+        readerWriter.write(intAsFourBytes(FSConstants.END_OF_CHAIN));
     }
 
 
@@ -194,14 +187,14 @@ public class FileSystem implements IFileSystem {
     private void appendClusterLinkToDirectory(int directoryCluster, int fileCluster) throws IOException {
         byte[] currentBytes = getFileContent(directoryCluster);
         byte[] newContent = Arrays.copyOf(currentBytes, currentBytes.length + 4);
-        byte[] pointerToNewFile = FSUtils.intAsFourBytes(fileCluster);
+        byte[] pointerToNewFile = intAsFourBytes(fileCluster);
         System.arraycopy(pointerToNewFile, 0, newContent, currentBytes.length, pointerToNewFile.length);
         write0(newContent, getFileEntryFromCluster(directoryCluster));
     }
 
     private void setFATClusterValue(int clusterIndex, int clusterValue) throws IOException {
         readerWriter.seek(getClusterOffset(clusterIndex));
-        readerWriter.write(FSUtils.intAsFourBytes(clusterValue));
+        readerWriter.write(intAsFourBytes(clusterValue));
     }
 
     @Override
@@ -272,7 +265,7 @@ public class FileSystem implements IFileSystem {
         while (true) {
             int nextClusterInChain = readIntFromFsOnOffset(readerWriter, clusterOffset);
             readerWriter.seek(clusterOffset);
-            readerWriter.write(FSUtils.intAsFourBytes(0));
+            readerWriter.write(intAsFourBytes(0));
             if (nextClusterInChain == FSConstants.END_OF_CHAIN) {
                 break;
             }

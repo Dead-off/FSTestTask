@@ -15,8 +15,6 @@ public class FileSystem implements IFileSystem {
     private final int clusterCount;
     private final int clusterSize;
 
-    // TODO: 09.08.2017 need hard refactoring
-
     private FileSystem(BytesReaderWriter readerWriter, int clusterCount, int clusterSize) {
         this.readerWriter = readerWriter;
         this.clusterCount = clusterCount;
@@ -68,36 +66,31 @@ public class FileSystem implements IFileSystem {
         readerWriter.seekAndWrite(intAsFourBytes(0), FSConstants.Offsets.LAST_USED_CLUSTER);
         readerWriter.seekAndWrite(intAsFourBytes(clusterSize), FSConstants.Offsets.CLUSTER_SIZE);
         readerWriter.seekAndWrite(intAsFourBytes(FSConstants.END_OF_CHAIN), FSConstants.Offsets.FAT_TABLE);
-        readerWriter.seekAndWrite(FSFileEntry.EMPTY_ROOT.toByteArray(), getClusterOffset(FSConstants.DEFAULT_CLUSTER_COUNT));
+        readerWriter.seekAndWrite(FSFileEntry.EMPTY_ROOT.toByteArray(), getClusterDataOffset(0));
     }
 
-    private int getClusterOffset(int clusterIndex) {
+    private int getClusterFATOffset(int clusterIndex) {
         return FSConstants.Offsets.FAT_TABLE + clusterIndex * FSConstants.BYTE_DEPTH;
     }
 
     private void clearFATChain(int firstCluster) throws IOException {
-        int curCluster = firstCluster;
+        int clearedCluster = firstCluster;
         int nextCluster;
         do {
-            nextCluster = readIntFromFsOnOffset(readerWriter, getClusterOffset(curCluster));
-            readerWriter.seek(getClusterOffset(curCluster));
-            readerWriter.write(intAsFourBytes(0));
-            curCluster = nextCluster;
+            nextCluster = readIntFromFsOnOffset(readerWriter, getClusterFATOffset(clearedCluster));
+            setFATClusterValue(clearedCluster, 0);
+            clearedCluster = nextCluster;
         } while (nextCluster != FSConstants.END_OF_CHAIN);
     }
 
     private void createFATChain(List<Integer> clusterIndexes) throws IOException {
-        for (int i = 0; i < clusterIndexes.size() - 1; i++) {
-            int curClusterIndex = clusterIndexes.get(i);
-            int nextClusterIndex = clusterIndexes.get(i + 1);
-            readerWriter.seek(getClusterOffset(curClusterIndex));
-            readerWriter.write(intAsFourBytes(nextClusterIndex));
+        for (int i = 0; i < clusterIndexes.size(); i++) {
+            int currentClusterIndex = clusterIndexes.get(i);
+            boolean isLastCluster = (i == clusterIndexes.size() - 1);
+            int nextClusterIndex = isLastCluster ? FSConstants.END_OF_CHAIN : clusterIndexes.get(i + 1);
+            setFATClusterValue(currentClusterIndex, nextClusterIndex);
         }
-        int lastCluster = clusterIndexes.get(clusterIndexes.size() - 1);
-        readerWriter.seek(getClusterOffset(lastCluster));
-        readerWriter.write(intAsFourBytes(FSConstants.END_OF_CHAIN));
     }
-
 
     @Override
     public void write(IFile file, String content) throws IOException {
@@ -107,10 +100,7 @@ public class FileSystem implements IFileSystem {
     @Override
     public void write(IFile file, byte[] content) throws IOException {
         int fileCluster = findFileCluster(file);
-        readerWriter.seek(getClusterDataOffset(fileCluster));
-        byte[] currentClusterData = new byte[clusterSize];
-        readerWriter.readBytes(currentClusterData);
-        FSFileEntry currentFile = FSFileEntry.fromByteArray(currentClusterData);
+        FSFileEntry currentFile = getFileEntryFromCluster(fileCluster);
         if (currentFile.isDirectory) {
             throw new WriteException(String.format("file %s is a directory", file.getPath()));
         }
@@ -121,20 +111,17 @@ public class FileSystem implements IFileSystem {
         int fileCluster = currentFile.clusterNumber;
         currentFile.size = content.length;
         byte[] contentWithHeader = getContentWithHeader(content, currentFile.toByteArray());
-
         clearFATChain(fileCluster);
         int writeBytes = 0;
         List<Integer> usedClusterIndexes = new ArrayList<>();
         int clusterForWrite = fileCluster;
         do {
-            readerWriter.seek(getClusterDataOffset(clusterForWrite));
-            int bytesToWrite = Math.min(clusterSize, contentWithHeader.length - writeBytes);
-            readerWriter.write(Arrays.copyOfRange(contentWithHeader, writeBytes, writeBytes + bytesToWrite));
+            int writeBytesCount = Math.min(clusterSize, contentWithHeader.length - writeBytes);
+            readerWriter.seekAndWrite(Arrays.copyOfRange(contentWithHeader, writeBytes, writeBytes + writeBytesCount), getClusterDataOffset(clusterForWrite));
             usedClusterIndexes.add(clusterForWrite);
-            clusterForWrite = getFirstFreeCluster(clusterForWrite + 1);//todo bad, better is set temp value eg -2, but try find with start from 0
-            writeBytes += bytesToWrite;
+            clusterForWrite = getFirstFreeCluster(clusterForWrite + 1);
+            writeBytes += writeBytesCount;
         } while (writeBytes != contentWithHeader.length);
-
         createFATChain(usedClusterIndexes);
     }
 
@@ -166,15 +153,12 @@ public class FileSystem implements IFileSystem {
         int parentCluster = findFileCluster(parent);
         int clusterForNewFile = getFirstFreeCluster();
         FSFileEntry parentFile = getFileEntryFromCluster(parentCluster);
-        if (!parentFile.isDirectory) {
-            throw new CreateFileException(String.format("parent file %s is a file", parent.getPath()));
-        }
+        checkThatFileIsNotDirectory(parentFile, parent.getPath());
         setFATClusterValue(clusterForNewFile, FSConstants.END_OF_CHAIN);
         FSFileEntry newFile = FSFileEntry.from(newFileName, false, clusterForNewFile);
         int clusterDataOffset = getClusterDataOffset(clusterForNewFile);
-        readerWriter.seek(clusterDataOffset);
-        readerWriter.write(newFile.toByteArray());
-        appendClusterLinkToDirectory(parentCluster, clusterForNewFile);
+        readerWriter.seekAndWrite(newFile.toByteArray(), clusterDataOffset);
+        appendClusterLinkToDirectory(parentCluster, clusterForNewFile, parentFile);
         return parent.child(newFileName);
     }
 
@@ -184,17 +168,22 @@ public class FileSystem implements IFileSystem {
         }
     }
 
-    private void appendClusterLinkToDirectory(int directoryCluster, int fileCluster) throws IOException {
+    private void appendClusterLinkToDirectory(int directoryCluster, int fileCluster, FSFileEntry directory) throws IOException {
         byte[] currentBytes = getFileContent(directoryCluster);
         byte[] newContent = Arrays.copyOf(currentBytes, currentBytes.length + 4);
         byte[] pointerToNewFile = intAsFourBytes(fileCluster);
         System.arraycopy(pointerToNewFile, 0, newContent, currentBytes.length, pointerToNewFile.length);
-        write0(newContent, getFileEntryFromCluster(directoryCluster));
+        write0(newContent, directory);
     }
 
     private void setFATClusterValue(int clusterIndex, int clusterValue) throws IOException {
-        readerWriter.seek(getClusterOffset(clusterIndex));
-        readerWriter.write(intAsFourBytes(clusterValue));
+        readerWriter.seekAndWrite(intAsFourBytes(clusterValue), getClusterFATOffset(clusterIndex));
+    }
+
+    private void checkThatFileIsNotDirectory(FSFileEntry file, String path) {
+        if (!file.isDirectory) {
+            throw new CreateFileException(String.format("parent file %s is a file", path));
+        }
     }
 
     @Override
@@ -202,28 +191,37 @@ public class FileSystem implements IFileSystem {
         checkName(newDirectoryName);
         int parentCluster = findFileCluster(parent);
         int newDirectoryCluster = getFirstFreeCluster();
+        FSFileEntry parentFile = getFileEntryFromCluster(parentCluster);
+        checkThatFileIsNotDirectory(parentFile, parent.getPath());
         setFATClusterValue(newDirectoryCluster, FSConstants.END_OF_CHAIN);
         FSFileEntry newFile = FSFileEntry.from(newDirectoryName, true, newDirectoryCluster);
-        readerWriter.seek(getClusterDataOffset(newDirectoryCluster));
-        readerWriter.write(newFile.toByteArray());
-        appendClusterLinkToDirectory(parentCluster, newDirectoryCluster);
+        readerWriter.seekAndWrite(newFile.toByteArray(), getClusterDataOffset(newDirectoryCluster));
+        appendClusterLinkToDirectory(parentCluster, newDirectoryCluster, parentFile);
         return parent.child(newDirectoryName);
     }
 
     private int getFirstFreeCluster(int startFrom) throws IOException {
         for (int i = startFrom; i < clusterCount; i++) {
-            int clusterOffset = getClusterOffset(i);
+            int clusterOffset = getClusterFATOffset(i);
             int nextClusterInChain = readIntFromFsOnOffset(readerWriter, clusterOffset);
             if (nextClusterInChain == 0) {
                 return i;
             }
         }
-        throw new IOException("Don't found free cluster");
+        //if not find from start, try find from 0
+        for (int i = 0; i < startFrom; i++) {
+            int clusterOffset = getClusterFATOffset(i);
+            int nextClusterInChain = readIntFromFsOnOffset(readerWriter, clusterOffset);
+            if (nextClusterInChain == 0) {
+                return i;
+            }
+        }
+        throw new FSException("Don't found free cluster");
     }
 
     private FSFileEntry getFileEntryFromCluster(int clusterNumber) throws IOException {
         readerWriter.seek(getClusterDataOffset(clusterNumber));
-        byte[] currentClusterData = new byte[clusterSize];
+        byte[] currentClusterData = new byte[FSConstants.FILE_HEADER_LENGTH];
         readerWriter.readBytes(currentClusterData);
         return FSFileEntry.fromByteArray(currentClusterData);
     }
@@ -232,10 +230,11 @@ public class FileSystem implements IFileSystem {
         return getFirstFreeCluster(0);
     }
 
+    //todo refactoring
     @Override
     public void removeFile(IFile file) throws IOException {
         int fileCluster = findFileCluster(file);
-        int clusterOffset = getClusterOffset(fileCluster);
+        int clusterOffset = getClusterFATOffset(fileCluster);
         IFile parentFile = file.parent();
         int parentCluster = findFileCluster(parentFile);
         readerWriter.seek(getClusterDataOffset(fileCluster));
@@ -275,7 +274,7 @@ public class FileSystem implements IFileSystem {
     @Override
     public List<String> getFilesList(IFile directory) throws IOException {
         int clusterNumber = findFileCluster(directory);
-        int nextClusterInChain = readIntFromFsOnOffset(readerWriter, getClusterOffset(clusterNumber));
+        int nextClusterInChain = readIntFromFsOnOffset(readerWriter, getClusterFATOffset(clusterNumber));
         readerWriter.seek(getClusterDataOffset(clusterNumber));
         byte[] currentClusterData = new byte[clusterSize];
         readerWriter.readBytes(currentClusterData);
@@ -310,7 +309,7 @@ public class FileSystem implements IFileSystem {
             return clusterOfCurrentFile;
         }
         String currentName = fileNames[currentNameIdx];
-        int clusterOffset = getClusterOffset(clusterOfCurrentFile);
+        int clusterOffset = getClusterFATOffset(clusterOfCurrentFile);
         int nextClusterInChain = readIntFromFsOnOffset(readerWriter, clusterOffset);
         readerWriter.seek(getClusterDataOffset(clusterOfCurrentFile));
         byte[] currentClusterData = new byte[clusterSize];
@@ -342,7 +341,7 @@ public class FileSystem implements IFileSystem {
     }
 
     private byte[] getFileContent(int clusterNumber) throws IOException {
-        int clusterOffset = getClusterOffset(clusterNumber);
+        int clusterOffset = getClusterFATOffset(clusterNumber);
         int nextClusterInChain = readIntFromFsOnOffset(readerWriter, clusterOffset);
         readerWriter.seek(getClusterDataOffset(clusterNumber));
         byte[] currentClusterData = new byte[clusterSize];
@@ -353,10 +352,7 @@ public class FileSystem implements IFileSystem {
 
     private byte[] getFileContent(FSFileEntry file, int nextCluster, byte[] clusterData) throws IOException {
         byte[] result = new byte[file.size];
-        if (file.isRemoved()) {
-            throw new FileNotFoundException();
-        }
-        int clusterOffset = getClusterOffset(file.clusterNumber);
+        checkThatFileIsNotRemoved(file);
         int firstClusterSize = (clusterSize - FSConstants.FILE_HEADER_LENGTH);
         boolean allContentInFirstCluster = firstClusterSize > file.size;
         System.arraycopy(clusterData, FSConstants.FILE_HEADER_LENGTH, result, 0,
@@ -370,7 +366,7 @@ public class FileSystem implements IFileSystem {
                 //todo error???
             }
             int nextClusterOffset = getClusterDataOffset(nextCluster);
-            int fatClusterOffset = getClusterOffset(nextCluster);
+            int fatClusterOffset = getClusterFATOffset(nextCluster);
             nextCluster = readIntFromFsOnOffset(readerWriter, fatClusterOffset);
             readerWriter.seek(nextClusterOffset);
             byte[] currentClusterData = new byte[clusterSize];

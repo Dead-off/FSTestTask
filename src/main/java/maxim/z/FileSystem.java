@@ -5,6 +5,7 @@ import maxim.z.exceptions.*;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 
 import static maxim.z.FSUtils.intAsFourBytes;
@@ -153,7 +154,7 @@ public class FileSystem implements IFileSystem {
         int parentCluster = findFileCluster(parent);
         int clusterForNewFile = getFirstFreeCluster();
         FSFileEntry parentFile = getFileEntryFromCluster(parentCluster);
-        checkThatFileIsNotDirectory(parentFile, parent.getPath());
+        checkThatFileIsDirectory(parentFile, parent.getPath());
         setFATClusterValue(clusterForNewFile, FSConstants.END_OF_CHAIN);
         FSFileEntry newFile = FSFileEntry.from(newFileName, false, clusterForNewFile);
         int clusterDataOffset = getClusterDataOffset(clusterForNewFile);
@@ -180,7 +181,7 @@ public class FileSystem implements IFileSystem {
         readerWriter.seekAndWrite(intAsFourBytes(clusterValue), getClusterFATOffset(clusterIndex));
     }
 
-    private void checkThatFileIsNotDirectory(FSFileEntry file, String path) {
+    private void checkThatFileIsDirectory(FSFileEntry file, String path) {
         if (!file.isDirectory) {
             throw new CreateFileException(String.format("parent file %s is a file", path));
         }
@@ -192,7 +193,7 @@ public class FileSystem implements IFileSystem {
         int parentCluster = findFileCluster(parent);
         int newDirectoryCluster = getFirstFreeCluster();
         FSFileEntry parentFile = getFileEntryFromCluster(parentCluster);
-        checkThatFileIsNotDirectory(parentFile, parent.getPath());
+        checkThatFileIsDirectory(parentFile, parent.getPath());
         setFATClusterValue(newDirectoryCluster, FSConstants.END_OF_CHAIN);
         FSFileEntry newFile = FSFileEntry.from(newDirectoryName, true, newDirectoryCluster);
         readerWriter.seekAndWrite(newFile.toByteArray(), getClusterDataOffset(newDirectoryCluster));
@@ -277,6 +278,9 @@ public class FileSystem implements IFileSystem {
         readerWriter.seekAndRead(currentClusterData, getClusterDataOffset(clusterNumber));
         FSFileEntry currentFile = FSFileEntry.fromByteArray(currentClusterData);
         byte[] content = getFileContent(currentFile, nextClusterInChain, currentClusterData);
+        if (!currentFile.isDirectory) {
+            return Collections.emptyList();
+        }
         List<String> result = new ArrayList<>();
         List<Integer> childFilesClusters = getChildClusters(content);
         for (int childClusterNumber : childFilesClusters) {

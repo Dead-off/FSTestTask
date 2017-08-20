@@ -230,22 +230,28 @@ public class FileSystem implements IFileSystem {
         return getFirstFreeCluster(0);
     }
 
-    //todo refactoring
     @Override
     public void removeFile(IFile file) throws IOException {
         int fileCluster = findFileCluster(file);
-        int clusterOffset = getClusterFATOffset(fileCluster);
         IFile parentFile = file.parent();
         int parentCluster = findFileCluster(parentFile);
-        readerWriter.seek(getClusterDataOffset(fileCluster));
         byte[] currentClusterData = new byte[clusterSize];
-        readerWriter.readBytes(currentClusterData);
+        readerWriter.seekAndRead(currentClusterData, getClusterDataOffset(fileCluster));
         FSFileEntry currentFile = FSFileEntry.fromByteArray(currentClusterData);
         currentFile.remove();
-        readerWriter.seek(getClusterDataOffset(fileCluster));
-        readerWriter.write(currentFile.toByteArray());
+        readerWriter.seekAndWrite(currentFile.toByteArray(), getClusterDataOffset(fileCluster));
 
+        removeFileLinkFromDirectory(parentCluster, fileCluster);
+        clearFATChain(fileCluster);
+    }
+
+    private void removeFileLinkFromDirectory(int parentCluster, int fileCluster) throws IOException {
         byte[] currentContent = getFileContent(parentCluster);
+        byte[] newContent = removeFileLinkFromContent(currentContent, fileCluster);
+        write0(newContent, getFileEntryFromCluster(parentCluster));
+    }
+
+    private byte[] removeFileLinkFromContent(byte[] currentContent, int fileCluster) {
         int idxLink = -1;
         for (int i = 0; i < currentContent.length; i += 4) {
             int clusterChildLink = FSUtils.intFromFourBytes(Arrays.copyOfRange(currentContent, i, i + FSConstants.BYTE_DEPTH));
@@ -260,33 +266,22 @@ public class FileSystem implements IFileSystem {
         byte[] newContent = new byte[currentContent.length - FSConstants.BYTE_DEPTH];
         System.arraycopy(currentContent, 0, newContent, 0, idxLink);
         System.arraycopy(currentContent, idxLink + FSConstants.BYTE_DEPTH, newContent, idxLink, newContent.length - idxLink);
-        write0(newContent, getFileEntryFromCluster(parentCluster));
-        while (true) {
-            int nextClusterInChain = readIntFromFsOnOffset(readerWriter, clusterOffset);
-            readerWriter.seek(clusterOffset);
-            readerWriter.write(intAsFourBytes(0));
-            if (nextClusterInChain == FSConstants.END_OF_CHAIN) {
-                break;
-            }
-        }
+        return newContent;
     }
 
     @Override
     public List<String> getFilesList(IFile directory) throws IOException {
         int clusterNumber = findFileCluster(directory);
         int nextClusterInChain = readIntFromFsOnOffset(readerWriter, getClusterFATOffset(clusterNumber));
-        readerWriter.seek(getClusterDataOffset(clusterNumber));
         byte[] currentClusterData = new byte[clusterSize];
-        readerWriter.readBytes(currentClusterData);
+        readerWriter.seekAndRead(currentClusterData, getClusterDataOffset(clusterNumber));
         FSFileEntry currentFile = FSFileEntry.fromByteArray(currentClusterData);
         byte[] content = getFileContent(currentFile, nextClusterInChain, currentClusterData);
-        List<Integer> childFilesClusters = new ArrayList<>();
         List<String> result = new ArrayList<>();
-        for (int i = 0; i < content.length; i += 4) {
-            int childClusterNumber = FSUtils.intFromFourBytes(new byte[]{content[i], content[i + 1], content[i + 2], content[i + 3]});
-            readerWriter.seek(getClusterDataOffset(childClusterNumber));
+        List<Integer> childFilesClusters = getChildClusters(content);
+        for (int childClusterNumber : childFilesClusters) {
             currentClusterData = new byte[clusterSize];
-            readerWriter.readBytes(currentClusterData);
+            readerWriter.seekAndRead(currentClusterData, getClusterDataOffset(childClusterNumber));
             FSFileEntry childFile = FSFileEntry.fromByteArray(currentClusterData);
             if (!childFile.isRemoved()) {
                 result.add(childFile.name);
@@ -311,20 +306,15 @@ public class FileSystem implements IFileSystem {
         String currentName = fileNames[currentNameIdx];
         int clusterOffset = getClusterFATOffset(clusterOfCurrentFile);
         int nextClusterInChain = readIntFromFsOnOffset(readerWriter, clusterOffset);
-        readerWriter.seek(getClusterDataOffset(clusterOfCurrentFile));
         byte[] currentClusterData = new byte[clusterSize];
-        readerWriter.readBytes(currentClusterData);
+        readerWriter.seekAndRead(currentClusterData, getClusterDataOffset(clusterOfCurrentFile));
         FSFileEntry currentFile = FSFileEntry.fromByteArray(currentClusterData);
         checkThatFileIsNotRemoved(currentFile);
         byte[] content = getFileContent(currentFile, nextClusterInChain, currentClusterData);
-        List<Integer> childFilesClusters = new ArrayList<>();
-        for (int i = 0; i < content.length; i += 4) {
-            childFilesClusters.add(FSUtils.intFromFourBytes(new byte[]{content[i], content[i + 1], content[i + 2], content[i + 3]}));
-        }
+        List<Integer> childFilesClusters = getChildClusters(content);
         for (int clusterNum : childFilesClusters) {
-            readerWriter.seek(getClusterDataOffset(clusterNum));
             currentClusterData = new byte[clusterSize];
-            readerWriter.readBytes(currentClusterData);
+            readerWriter.seekAndRead(currentClusterData, getClusterDataOffset(clusterNum));
             FSFileEntry childFile = FSFileEntry.fromByteArray(currentClusterData);
             checkThatFileIsNotRemoved(childFile);
             if (childFile.name.equals(currentName)) {
@@ -332,6 +322,15 @@ public class FileSystem implements IFileSystem {
             }
         }
         throw new FileNotFoundException();
+    }
+
+    private List<Integer> getChildClusters(byte[] directoryContent) {
+        List<Integer> result = new ArrayList<>();
+        for (int i = 0; i < directoryContent.length; i += FSConstants.BYTE_DEPTH) {
+            byte[] intBytes = new byte[]{directoryContent[i], directoryContent[i + 1], directoryContent[i + 2], directoryContent[i + 3]};
+            result.add(FSUtils.intFromFourBytes(intBytes));
+        }
+        return result;
     }
 
     private void checkThatFileIsNotRemoved(FSFileEntry file) {
@@ -363,7 +362,7 @@ public class FileSystem implements IFileSystem {
         int readBytesCount = firstClusterSize;
         while (readBytesCount != file.size) {
             if (nextCluster == FSConstants.END_OF_CHAIN) {
-                //todo error???
+                throw new FSFormatException();
             }
             int nextClusterOffset = getClusterDataOffset(nextCluster);
             int fatClusterOffset = getClusterFATOffset(nextCluster);
@@ -376,10 +375,6 @@ public class FileSystem implements IFileSystem {
             readBytesCount += bytesToRead;
         }
         return result;
-    }
-
-    private byte[] getDataBytesWithoutHeader(byte[] dataBytes) {
-        return Arrays.copyOfRange(dataBytes, FSConstants.FILE_HEADER_LENGTH, dataBytes.length);
     }
 
     private int getClusterDataOffset(int clusterNumber) {

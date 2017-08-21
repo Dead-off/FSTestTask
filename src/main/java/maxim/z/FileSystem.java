@@ -10,6 +10,25 @@ import java.util.List;
 
 import static maxim.z.FSUtils.intAsFourBytes;
 
+/**
+ * Implementation of virtual file system, that store all data in a single real file.
+ * The file has following structure:
+ * Bytes 0-63 contains meta information. Bytes 20-23 in this header is INT32 value of total clusters count in fs,
+ * bytes 28-31 contains size of one cluster. This constants specified in {@link FSConstants} class.
+ * At 64 byte is start of table of used clusters. The table is divided into blocks of 4 bytes (int32).
+ * Every block index in table coincides with index of data cluster. Value in table is index of next cluster with data.
+ * If current cluster is end of chain, then value of cluster is 0xFFFFFFFF {@link FSConstants}
+ * First cluster always contains root directory.
+ * Table length is 4*clusterCount bytes.
+ * After table file contains all data clusters.
+ * Each first cluster contains 32 bytes of meta file information (see {@link FSFileEntry}).
+ * First 0-19 bytes is file name. If name length is less 20 symbols, then at end of name appends UTF-8 spaces (0x20 byte)
+ * 20 byte is attributes values (one bit per attribute).
+ * 24-27 bytes contains index of first cluster of current file.
+ * 28-31 bytes is count of data bytes of current file.
+ * for files ("is directory attribute - false") data it just file content. For directories each 4 bytes is
+ * cluster index of child file.
+ */
 public class FileSystem implements IFileSystem {
 
     private final BytesReaderWriter readerWriter;
@@ -93,11 +112,29 @@ public class FileSystem implements IFileSystem {
         }
     }
 
+    /**
+     * Overrides data of specified file by specified content.
+     *
+     * @param file    file for writing data
+     * @param content string (encoding specified in {@link FSConstants}), that must written to file
+     * @throws IOException           on any default IO error
+     * @throws FileNotFoundException if specified file was not found
+     * @throws WriteException        if specified file is not available for writing (e.g. file is a directory)
+     */
     @Override
     public void write(IFile file, String content) throws IOException {
         write(file, content.getBytes(FSConstants.CHARSET));
     }
 
+    /**
+     * Overrides data of specified file by specified content.
+     *
+     * @param file    file for writing data
+     * @param content bytes, that must written to file
+     * @throws IOException           on any default IO error
+     * @throws FileNotFoundException if specified file was not found
+     * @throws WriteException        if specified file is not available for writing (e.g. file is a directory)
+     */
     @Override
     public void write(IFile file, byte[] content) throws IOException {
         int fileCluster = findFileCluster(file);
@@ -133,6 +170,15 @@ public class FileSystem implements IFileSystem {
         return result;
     }
 
+    /**
+     * Reads file content and return it
+     *
+     * @param file file for reading data
+     * @return data of specified file
+     * @throws IOException           on any default IO error
+     * @throws FileNotFoundException if specified file was not found
+     * @throws ReadException         if specified file is not available for reading (e.g. file is a directory)
+     */
     @Override
     public byte[] read(IFile file) throws IOException {
         int fileCluster = findFileCluster(file);
@@ -143,11 +189,31 @@ public class FileSystem implements IFileSystem {
         return getFileContent(fileCluster);
     }
 
+    /**
+     * Reads file content and return it
+     *
+     * @param file file for reading data
+     * @return data of specified file as string (encoding specified in {@link FSConstants})
+     * @throws IOException           on any default IO error
+     * @throws FileNotFoundException if specified file was not found
+     * @throws ReadException         if specified file is not available for reading (e.g. file is a directory)
+     */
     @Override
     public String readAsString(IFile file) throws IOException {
         return new String(read(file), FSConstants.CHARSET);
     }
 
+    /**
+     * creates a new file in file system and return it
+     *
+     * @param parent      directory for creating file
+     * @param newFileName name of new file
+     * @return File object of created file
+     * @throws IOException            on any default IO error
+     * @throws IncorrectNameException if name contains forbidden symbols
+     * @throws FileNotFoundException  if parent directory was not found
+     * @throws CreateFileException    if parent object is not directory
+     */
     @Override
     public IFile createFile(IFile parent, String newFileName) throws IOException {
         checkName(newFileName);
@@ -187,6 +253,17 @@ public class FileSystem implements IFileSystem {
         }
     }
 
+    /**
+     * creates a new directory in file system and return it
+     *
+     * @param parent           directory for creating file
+     * @param newDirectoryName name of new directory
+     * @return File object of created file
+     * @throws IOException            on any default IO error
+     * @throws IncorrectNameException if name contains forbidden symbols
+     * @throws FileNotFoundException  if parent directory was not found
+     * @throws CreateFileException    if parent object is not directory
+     */
     @Override
     public IFile createDirectory(IFile parent, String newDirectoryName) throws IOException {
         checkName(newDirectoryName);
@@ -231,6 +308,13 @@ public class FileSystem implements IFileSystem {
         return getFirstFreeCluster(0);
     }
 
+    /**
+     * removes a specified file
+     *
+     * @param file file for removing
+     * @throws IOException           on any default IO error
+     * @throws FileNotFoundException if specified file was not found
+     */
     @Override
     public void removeFile(IFile file) throws IOException {
         int fileCluster = findFileCluster(file);
@@ -270,6 +354,14 @@ public class FileSystem implements IFileSystem {
         return newContent;
     }
 
+    /**
+     * return a list of files and directories in specify directory
+     *
+     * @param directory directory for get files list
+     * @return list of files and directories in specify directory
+     * @throws FileNotFoundException if directory was not found
+     * @throws IOException           on any default IO error
+     */
     @Override
     public List<String> getFilesList(IFile directory) throws IOException {
         int clusterNumber = findFileCluster(directory);

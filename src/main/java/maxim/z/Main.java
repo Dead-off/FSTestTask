@@ -11,7 +11,7 @@ public class Main {
     public static void main(String[] args) throws IOException {
         Scanner scanner = new Scanner(System.in);
         if (args.length == 0 || args[0].equals("--help")) {
-            System.out.println("for start program execute 'java -jar [jar_file] [absolute_path_to_fs_file_storage]'");
+            System.out.println("to start program execute 'java -jar [jar_file] [absolute_path_to_fs_file_storage]'");
             return;
         }
         String pathToFile = args[0];
@@ -43,8 +43,7 @@ public class Main {
                 }
                 Commands command = commandsMap.get(arg[0]);
                 if (command == null) {
-                    System.out.println(String.format("unsupported command %s", arg[0]));
-                    printHelpMessage();
+                    System.out.println(String.format("unsupported command %s, type help", arg[0]));
                     continue;
                 }
                 if (!command.isCorrectArgsCount(arg.length)) {
@@ -93,14 +92,14 @@ public class Main {
 
     private static void printHelpMessage() {
         System.out.println("commands:");
-        System.out.println("cd [dir_name] - for change current directory");
-        System.out.println("ls - for get files list in current directory");
-        System.out.println("mkdir [dir_name] - for create new directory");
-        System.out.println("mkfile [file_name] - for create new file");
-        System.out.println("write [file_name] [content] - for write content to file");
-        System.out.println("read [file_name] - for read file content");
-        System.out.println("rm [file_name] - for remove file");
-        System.out.println("--help - for out this information");
+        System.out.println("cd [dir_name] - to change current directory");
+        System.out.println("ls - to get files list in current directory");
+        System.out.println("mkdir [dir_name] - to create new directory");
+        System.out.println("mkfile [file_name] - to create new file");
+        System.out.println("write [file_name] [content] - to write content to file");
+        System.out.println("read [file_name] - to read file content");
+        System.out.println("rm [file_name] - to remove file");
+        System.out.println("help - show help");
     }
 
     private static void printCurrentDirectory(IFile directory) {

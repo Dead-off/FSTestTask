@@ -67,11 +67,11 @@ public class FileSystem implements IFileSystem {
     }
 
     private static int readClusterSize(BytesReaderWriter readerWriter) throws IOException {
-        return readIntFromFsOnOffset(readerWriter, FSConstants.Offsets.CLUSTERS_COUNT);
+        return readIntFromFsOnOffset(readerWriter, FSConstants.Offsets.CLUSTER_SIZE);
     }
 
     private static int readClusterCount(BytesReaderWriter readerWriter) throws IOException {
-        return readIntFromFsOnOffset(readerWriter, FSConstants.Offsets.CLUSTER_SIZE);
+        return readIntFromFsOnOffset(readerWriter, FSConstants.Offsets.CLUSTERS_COUNT);
     }
 
     private static int readIntFromFsOnOffset(BytesReaderWriter readerWriter, int offset) throws IOException {

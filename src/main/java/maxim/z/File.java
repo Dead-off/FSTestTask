@@ -5,9 +5,6 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.stream.Collectors;
 
-/**
- * Support class for create file pointers for file system method {@link IFileSystem}
- */
 public class File implements IFile {
 
     private final List<String> directories;

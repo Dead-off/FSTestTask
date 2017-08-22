@@ -32,7 +32,7 @@ public class Main {
                 if ("exit".equals(line)) {
                     break;
                 }
-                if ("--help".equals(line)) {
+                if ("help".equals(line)) {
                     printHelpMessage();
                     continue;
                 }

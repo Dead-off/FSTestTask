@@ -25,9 +25,9 @@ public class Main {
         commandsMap.put("rm", Commands.RM);
         IFile curFile = File.rootInstance();
         printHelpMessage();
-        printCurrentDirectory(curFile);
         try (IFileSystem fs = FileSystem.getFileSystem(pathToFile)) {
-            while (scanner.hasNext()) {
+            while (true) {
+                printCurrentDirectory(curFile);
                 String line = scanner.nextLine();
                 if ("exit".equals(line)) {
                     break;
@@ -83,7 +83,6 @@ public class Main {
                     System.out.println("command execution failed");
                     System.out.println(e.getMessage());
                 }
-                printCurrentDirectory(curFile);
             }
         }
     }

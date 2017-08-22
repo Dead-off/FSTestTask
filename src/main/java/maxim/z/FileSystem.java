@@ -216,8 +216,8 @@ public class FileSystem implements IFileSystem {
      */
     @Override
     public IFile createFile(IFile parent, String newFileName) throws IOException {
-        checkName(newFileName);
         int parentCluster = findFileCluster(parent);
+        checkName(parentCluster, newFileName);
         int clusterForNewFile = getFirstFreeCluster();
         FSFileEntry parentFile = getFileEntryFromCluster(parentCluster);
         checkThatFileIsDirectory(parentFile, parent.getPath());
@@ -229,9 +229,32 @@ public class FileSystem implements IFileSystem {
         return parent.child(newFileName);
     }
 
-    private void checkName(String name) {
+    /**
+     * @param file specified directory
+     * @return true, is specified directory exist. Otherwise return false
+     * @throws IOException on any default IO error
+     */
+    @Override
+    public boolean isDirectoryExist(IFile file) throws IOException {
+        int fileCluster;
+        try {
+            fileCluster = findFileCluster(file);
+        } catch (FileNotFoundException e) {
+            return false;
+        }
+        return getFileEntryFromCluster(fileCluster).isDirectory;
+    }
+
+    private void checkName(int parentCluster, String name) throws IOException {
         if (!FSUtils.isCorrectName(name)) {
-            throw new IncorrectNameException();
+            throw new IncorrectNameException(String.format("File name can contains only letters, numbers, hyphen and underscore. " +
+                    "Max length is %s symbols", String.valueOf(FSConstants.FILE_NAME_LENGTH)));
+        }
+        List<Integer> childFilesClusters = getChildClusters(getFileContent(parentCluster));
+        for (int childCluster : childFilesClusters) {
+            if (name.equals(getFileEntryFromCluster(childCluster).name)) {
+                throw new IncorrectNameException(String.format("file with name %s already exist", name));
+            }
         }
     }
 
@@ -266,8 +289,8 @@ public class FileSystem implements IFileSystem {
      */
     @Override
     public IFile createDirectory(IFile parent, String newDirectoryName) throws IOException {
-        checkName(newDirectoryName);
         int parentCluster = findFileCluster(parent);
+        checkName(parentCluster, newDirectoryName);
         int newDirectoryCluster = getFirstFreeCluster();
         FSFileEntry parentFile = getFileEntryFromCluster(parentCluster);
         checkThatFileIsDirectory(parentFile, parent.getPath());

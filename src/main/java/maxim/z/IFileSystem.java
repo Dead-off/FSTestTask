@@ -88,6 +88,13 @@ public interface IFileSystem extends Closeable {
     void removeFile(IFile file) throws IOException;
 
     /**
+     * @param file specified directory
+     * @return true, is specified directory exist. Otherwise return false
+     * @throws IOException on any default IO error
+     */
+    boolean isDirectoryExist(IFile file) throws IOException;
+
+    /**
      * return a list of files and directories in specify directory
      *
      * @param directory directory for get files list

@@ -440,7 +440,7 @@ public class FileSystem implements IFileSystem {
                 return findFileCluster(clusterNum, fileNames, currentNameIdx + 1);
             }
         }
-        throw new FileNotFoundException();
+        throw new FileNotFoundException(String.format("file %s was not found", currentName));
     }
 
     private List<Integer> getChildClusters(byte[] directoryContent) {
@@ -454,7 +454,7 @@ public class FileSystem implements IFileSystem {
 
     private void checkThatFileIsNotRemoved(FSFileEntry file) {
         if (file.isRemoved()) {
-            throw new FileNotFoundException();
+            throw new FileNotFoundException(String.format("file %s was removed", file.name));
         }
     }
 

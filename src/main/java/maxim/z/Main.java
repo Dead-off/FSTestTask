@@ -38,10 +38,13 @@ public class Main {
                 }
                 String[] arg = line.split(" ");
                 if (arg.length == 0) {
+                    printHelpMessage();
                     continue;
                 }
                 Commands command = commandsMap.get(arg[0]);
                 if (command == null) {
+                    System.out.println(String.format("unsupported command %s", arg[0]));
+                    printHelpMessage();
                     continue;
                 }
                 if (!command.isCorrectArgsCount(arg.length)) {
@@ -73,7 +76,8 @@ public class Main {
                             System.out.println(fs.readAsString(curFile.child(arg[1])));
                             break;
                         case WRITE:
-                            fs.write(curFile.child(arg[1]), arg[2]);
+                            String content = Arrays.stream(arg).skip(2).reduce((s1, s2) -> s1 + " " + s2).orElse("");
+                            fs.write(curFile.child(arg[1]), content);
                             break;
                         case RM:
                             fs.removeFile(curFile.child(arg[1]));
@@ -96,6 +100,7 @@ public class Main {
         System.out.println("write [file_name] [content] - for write content to file");
         System.out.println("read [file_name] - for read file content");
         System.out.println("rm [file_name] - for remove file");
+        System.out.println("--help - for out this information");
     }
 
     private static void printCurrentDirectory(IFile directory) {
@@ -116,7 +121,7 @@ public class Main {
                 return argsCount == 1;
             }
             if (this == WRITE) {
-                return argsCount == 3;
+                return argsCount >= 3;
             }
             return argsCount == 2;
         }

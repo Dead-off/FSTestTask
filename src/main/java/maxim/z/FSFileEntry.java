@@ -35,8 +35,6 @@ class FSFileEntry {
         return isRemoved;
     }
 
-    // TODO: 09.08.2017 tests
-
     static FSFileEntry from(String name, boolean isDirectory, int clusterNumber) {
         return new FSFileEntry(name, isDirectory, 0, clusterNumber, false);
     }

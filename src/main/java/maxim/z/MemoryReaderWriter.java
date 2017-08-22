@@ -2,6 +2,9 @@ package maxim.z;
 
 import java.io.IOException;
 
+/**
+ * Implementation of bytes storage, that use for store data byte array
+ */
 class MemoryReaderWriter implements BytesReaderWriter {
 
     private byte[] storage;

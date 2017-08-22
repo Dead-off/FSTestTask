@@ -4,6 +4,9 @@ import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.RandomAccessFile;
 
+/**
+ * Implementation of bytes storage, that use for store file in real file system
+ */
 public class RAFWrapper implements BytesReaderWriter {
 
     private final RandomAccessFile randomAccessFile;

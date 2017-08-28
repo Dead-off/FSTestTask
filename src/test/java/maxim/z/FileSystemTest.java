@@ -131,6 +131,30 @@ public class FileSystemTest {
         }
     }
 
+    @Test
+    public void realFileTest() throws IOException {
+        String fileName = "build/fs_test_file";
+        java.io.File fsFile = new java.io.File(fileName);
+        if (fsFile.exists()) {
+            boolean deletedSuccessfully = fsFile.delete();
+            if (!deletedSuccessfully) {
+                fail(String.format("Can not remove file %s", fsFile.getAbsolutePath()));
+            }
+        }
+        String absolutePathToFile = fsFile.getAbsolutePath();
+        IFile root = File.rootInstance();
+        String testFileNameInFS = "testfile";
+        String testContent = "I am content!";
+        IFile testFile;
+        try (FileSystem fs = FileSystem.getFileSystem(absolutePathToFile)) {
+            testFile = fs.createFile(root, testFileNameInFS);
+            fs.write(testFile, testContent);
+        }
+        try (FileSystem fs = FileSystem.getFileSystem(absolutePathToFile)) {
+            String actualContent = fs.readAsString(testFile);
+            assertEquals(testContent, actualContent);
+        }
+    }
 
     private byte[] getCopyOfEmptyRootArray() {
         byte[] result = new byte[emptyRootDirFS.length];

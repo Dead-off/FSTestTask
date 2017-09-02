@@ -25,7 +25,7 @@ public class Main {
         commandsMap.put("rm", Commands.RM);
         IFile curFile = File.rootInstance();
         printHelpMessage();
-        try (IFileSystem fs = FileSystem.getFileSystem(pathToFile)) {
+        try (IFileSystem fs = FileSystemFactory.getFileSystem(pathToFile)) {
             while (true) {
                 printCurrentDirectory(curFile);
                 String line = scanner.nextLine();

@@ -32,8 +32,7 @@ public class FileSystemTest {
     @Test
     public void initTest() throws IOException {
         BytesReaderWriter brw = new MemoryReaderWriter(0);
-        FileSystem fs = FileSystem.getFileSystem(brw, FSConstants.DEFAULT_CLUSTER_COUNT, FSConstants.DEFAULT_CLUSTER_SIZE);
-        fs.init();
+        IFileSystem fs = FileSystemFactory.getFileSystem(brw);
         byte[] actual = new byte[FSConstants.Offsets.FAT_TABLE + FSConstants.DEFAULT_CLUSTER_COUNT * FSConstants.BYTE_DEPTH + FSConstants.DEFAULT_CLUSTER_SIZE];
         byte[] expected = getCopyOfEmptyRootArray();
         brw.seek(0);
@@ -44,10 +43,8 @@ public class FileSystemTest {
     @Test
     public void fsTest() throws IOException {
         BytesReaderWriter brw = new MemoryReaderWriter(0);
-        FileSystem fs = FileSystem.getFileSystem(brw, FSConstants.DEFAULT_CLUSTER_COUNT, FSConstants.DEFAULT_CLUSTER_SIZE);
-        fs.init();
+        IFileSystem fs = FileSystemFactory.getFileSystem(brw);
         File root = File.rootInstance();
-
         assertEquals(0, fs.getFilesList(root).size());
         IFile testFile = fs.createFile(root, "testFile");
         assertEquals(1, fs.getFilesList(root).size());
@@ -146,11 +143,11 @@ public class FileSystemTest {
         String testFileNameInFS = "testfile";
         String testContent = "I am content!";
         IFile testFile;
-        try (FileSystem fs = FileSystem.getFileSystem(absolutePathToFile)) {
+        try (IFileSystem fs = FileSystemFactory.getFileSystem(absolutePathToFile)) {
             testFile = fs.createFile(root, testFileNameInFS);
             fs.write(testFile, testContent);
         }
-        try (FileSystem fs = FileSystem.getFileSystem(absolutePathToFile)) {
+        try (IFileSystem fs = FileSystemFactory.getFileSystem(absolutePathToFile)) {
             String actualContent = fs.readAsString(testFile);
             assertEquals(testContent, actualContent);
         }

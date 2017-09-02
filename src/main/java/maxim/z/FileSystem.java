@@ -35,35 +35,39 @@ public class FileSystem implements IFileSystem {
     private final int clusterCount;
     private final int clusterSize;
 
-    private FileSystem(BytesReaderWriter readerWriter, int clusterCount, int clusterSize) {
+    FileSystem(BytesReaderWriter readerWriter) throws IOException {
         this.readerWriter = readerWriter;
-        this.clusterCount = clusterCount;
-        this.clusterSize = clusterSize;
-    }
-
-    public static FileSystem getFileSystem(String pathToFile) throws IOException {
-        java.io.File fsFile = new java.io.File(pathToFile);
-        if (fsFile.exists()) {
-            BytesReaderWriter readerWriter = new RAFWrapper(fsFile);
-            int clusterCount = readClusterCount(readerWriter);
-            int clusterSize = readClusterSize(readerWriter);
-            return getFileSystem(readerWriter, clusterCount, clusterSize);
+        int localClusterCount = readClusterCount(readerWriter);
+        int localClusterSize = readClusterSize(readerWriter);
+        boolean alreadyInitialized = (localClusterCount != 0 && localClusterSize != 0);
+        if (!alreadyInitialized) {
+            localClusterCount = FSConstants.DEFAULT_CLUSTER_COUNT;
+            localClusterSize = FSConstants.DEFAULT_CLUSTER_SIZE;
         }
-        createFSFile(fsFile);
-        FileSystem fs = new FileSystem(new RAFWrapper(fsFile), FSConstants.DEFAULT_CLUSTER_COUNT, FSConstants.DEFAULT_CLUSTER_SIZE);
-        fs.init();
-        return fs;
-    }
-
-    private static void createFSFile(java.io.File fsFile) throws IOException {
-        boolean res = fsFile.createNewFile();
-        if (!res) {
-            throw new IOException("Unable to create a file system. File system with this name already exist");
+        this.clusterCount = localClusterCount;
+        this.clusterSize = localClusterSize;
+        if (alreadyInitialized) {
+            checkThatRootFileAndFATChainExist();
+        } else {
+            readerWriter.seekAndWrite(intAsFourBytes(localClusterCount), FSConstants.Offsets.CLUSTERS_COUNT);
+            readerWriter.seekAndWrite(intAsFourBytes(0), FSConstants.Offsets.LAST_USED_CLUSTER);
+            readerWriter.seekAndWrite(intAsFourBytes(localClusterSize), FSConstants.Offsets.CLUSTER_SIZE);
+            readerWriter.seekAndWrite(intAsFourBytes(FSConstants.END_OF_CHAIN), FSConstants.Offsets.FAT_TABLE);
+            readerWriter.seekAndWrite(FSFileEntry.EMPTY_ROOT.toByteArray(), getClusterDataOffset(0));
         }
     }
 
-    static FileSystem getFileSystem(BytesReaderWriter readerWriter, int clusterCount, int clusterSize) throws IOException {
-        return new FileSystem(readerWriter, clusterCount, clusterSize);
+    private void checkThatRootFileAndFATChainExist() throws IOException {
+        int rootFileClusterNumber = 0;
+        int fatValue = readIntFromFsOnOffset(readerWriter, getClusterFATOffset(rootFileClusterNumber));
+        if (fatValue == 0) {
+            throw new FSFormatException("root cluster doesn't exist");
+        }
+        try {
+            FSFileEntry rootFile = getFileEntryFromCluster(rootFileClusterNumber);
+        } catch (Throwable e) {
+            throw new FSFormatException("root file have incorrect header", e);
+        }
     }
 
     private static int readClusterSize(BytesReaderWriter readerWriter) throws IOException {
@@ -79,14 +83,6 @@ public class FileSystem implements IFileSystem {
         byte[] bytes = new byte[FSConstants.BYTE_DEPTH];
         readerWriter.readBytes(bytes);
         return FSUtils.intFromFourBytes(bytes);
-    }
-
-    void init() throws IOException {
-        readerWriter.seekAndWrite(intAsFourBytes(clusterCount), FSConstants.Offsets.CLUSTERS_COUNT);
-        readerWriter.seekAndWrite(intAsFourBytes(0), FSConstants.Offsets.LAST_USED_CLUSTER);
-        readerWriter.seekAndWrite(intAsFourBytes(clusterSize), FSConstants.Offsets.CLUSTER_SIZE);
-        readerWriter.seekAndWrite(intAsFourBytes(FSConstants.END_OF_CHAIN), FSConstants.Offsets.FAT_TABLE);
-        readerWriter.seekAndWrite(FSFileEntry.EMPTY_ROOT.toByteArray(), getClusterDataOffset(0));
     }
 
     private int getClusterFATOffset(int clusterIndex) {
@@ -369,7 +365,7 @@ public class FileSystem implements IFileSystem {
             }
         }
         if (idxLink == -1) {
-            throw new FSFormatException();
+            throw new FSFormatException("");
         }
         byte[] newContent = new byte[currentContent.length - FSConstants.BYTE_DEPTH];
         System.arraycopy(currentContent, 0, newContent, 0, idxLink);
@@ -481,7 +477,7 @@ public class FileSystem implements IFileSystem {
         int readBytesCount = firstClusterSize;
         while (readBytesCount != file.size) {
             if (nextCluster == FSConstants.END_OF_CHAIN) {
-                throw new FSFormatException();
+                throw new FSFormatException("");
             }
             int nextClusterOffset = getClusterDataOffset(nextCluster);
             int fatClusterOffset = getClusterFATOffset(nextCluster);

@@ -1,9 +1,9 @@
 package maxim.z;
 
 /**
- * Support object for create file pointers for file system method {@link IFileSystem}
+ * Support object for create file pointers for file system method {@link VirtualFileSystem}
  */
-public interface IFile {
+public interface VirtualFile {
 
     /**
      * create new file instance for child file in current file with specified name
@@ -11,14 +11,14 @@ public interface IFile {
      * @param name name of child file
      * @return new file instance
      */
-    IFile child(String name);
+    VirtualFile child(String name);
 
     /**
      * create new file instance for parent of current file. If it is root file, return new root instance
      *
      * @return new file instance
      */
-    IFile parent();
+    VirtualFile parent();
 
     /**
      * @return absolute path for current file.

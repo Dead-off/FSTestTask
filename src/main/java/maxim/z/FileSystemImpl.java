@@ -29,13 +29,13 @@ import static maxim.z.FSUtils.intAsFourBytes;
  * for files ("is directory attribute - false") data it just file content. For directories each 4 bytes is
  * cluster index of child file.
  */
-public class FileSystem implements IFileSystem {
+public class FileSystemImpl implements VirtualFileSystem {
 
     private final BytesReaderWriter readerWriter;
     private final int clusterCount;
     private final int clusterSize;
 
-    FileSystem(BytesReaderWriter readerWriter) throws IOException {
+    FileSystemImpl(BytesReaderWriter readerWriter) throws IOException {
         this.readerWriter = readerWriter;
         int localClusterCount = readClusterCount(readerWriter);
         int localClusterSize = readClusterSize(readerWriter);
@@ -118,7 +118,7 @@ public class FileSystem implements IFileSystem {
      * @throws WriteException        if specified file is not available for writing (e.g. file is a directory)
      */
     @Override
-    public void write(IFile file, String content) throws IOException {
+    public void write(VirtualFile file, String content) throws IOException {
         write(file, content.getBytes(FSConstants.CHARSET));
     }
 
@@ -132,7 +132,7 @@ public class FileSystem implements IFileSystem {
      * @throws WriteException        if specified file is not available for writing (e.g. file is a directory)
      */
     @Override
-    public void write(IFile file, byte[] content) throws IOException {
+    public void write(VirtualFile file, byte[] content) throws IOException {
         int fileCluster = findFileCluster(file);
         FSFileEntry currentFile = getFileEntryFromCluster(fileCluster);
         if (currentFile.isDirectory) {
@@ -176,7 +176,7 @@ public class FileSystem implements IFileSystem {
      * @throws ReadException         if specified file is not available for reading (e.g. file is a directory)
      */
     @Override
-    public byte[] read(IFile file) throws IOException {
+    public byte[] read(VirtualFile file) throws IOException {
         int fileCluster = findFileCluster(file);
         FSFileEntry fileEntry = getFileEntryFromCluster(fileCluster);
         if (fileEntry.isDirectory) {
@@ -195,7 +195,7 @@ public class FileSystem implements IFileSystem {
      * @throws ReadException         if specified file is not available for reading (e.g. file is a directory)
      */
     @Override
-    public String readAsString(IFile file) throws IOException {
+    public String readAsString(VirtualFile file) throws IOException {
         return new String(read(file), FSConstants.CHARSET);
     }
 
@@ -211,7 +211,7 @@ public class FileSystem implements IFileSystem {
      * @throws CreateFileException    if parent object is not directory
      */
     @Override
-    public IFile createFile(IFile parent, String newFileName) throws IOException {
+    public VirtualFile createFile(VirtualFile parent, String newFileName) throws IOException {
         int parentCluster = findFileCluster(parent);
         checkName(parentCluster, newFileName);
         int clusterForNewFile = getFirstFreeCluster();
@@ -231,7 +231,7 @@ public class FileSystem implements IFileSystem {
      * @throws IOException on any default IO error
      */
     @Override
-    public boolean isDirectoryExist(IFile file) throws IOException {
+    public boolean isDirectoryExist(VirtualFile file) throws IOException {
         int fileCluster;
         try {
             fileCluster = findFileCluster(file);
@@ -284,7 +284,7 @@ public class FileSystem implements IFileSystem {
      * @throws CreateFileException    if parent object is not directory
      */
     @Override
-    public IFile createDirectory(IFile parent, String newDirectoryName) throws IOException {
+    public VirtualFile createDirectory(VirtualFile parent, String newDirectoryName) throws IOException {
         int parentCluster = findFileCluster(parent);
         checkName(parentCluster, newDirectoryName);
         int newDirectoryCluster = getFirstFreeCluster();
@@ -335,9 +335,9 @@ public class FileSystem implements IFileSystem {
      * @throws FileNotFoundException if specified file was not found
      */
     @Override
-    public void removeFile(IFile file) throws IOException {
+    public void removeFile(VirtualFile file) throws IOException {
         int fileCluster = findFileCluster(file);
-        IFile parentFile = file.parent();
+        VirtualFile parentFile = file.parent();
         int parentCluster = findFileCluster(parentFile);
         byte[] currentClusterData = new byte[clusterSize];
         readerWriter.seekAndRead(currentClusterData, getClusterDataOffset(fileCluster));
@@ -382,7 +382,7 @@ public class FileSystem implements IFileSystem {
      * @throws IOException           on any default IO error
      */
     @Override
-    public List<String> getFilesList(IFile directory) throws IOException {
+    public List<String> getFilesList(VirtualFile directory) throws IOException {
         int clusterNumber = findFileCluster(directory);
         int nextClusterInChain = readIntFromFsOnOffset(readerWriter, getClusterFATOffset(clusterNumber));
         byte[] currentClusterData = new byte[clusterSize];
@@ -405,7 +405,7 @@ public class FileSystem implements IFileSystem {
         return result;
     }
 
-    private int findFileCluster(IFile file) throws IOException {
+    private int findFileCluster(VirtualFile file) throws IOException {
         String[] dirNames = file.parseFileNames();
         int rootCluster = 0;
         if (dirNames.length == 0) {

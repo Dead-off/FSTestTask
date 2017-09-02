@@ -6,7 +6,7 @@ import java.io.Closeable;
 import java.io.IOException;
 import java.util.List;
 
-public interface IFileSystem extends Closeable {
+public interface VirtualFileSystem extends Closeable {
 
     /**
      * Overrides data of specified file by specified content.
@@ -17,7 +17,7 @@ public interface IFileSystem extends Closeable {
      * @throws FileNotFoundException if specified file was not found
      * @throws WriteException        if specified file is not available for writing (e.g. file is a directory)
      */
-    void write(IFile file, String content) throws IOException;
+    void write(VirtualFile file, String content) throws IOException;
 
     /**
      * Overrides data of specified file by specified content.
@@ -28,7 +28,7 @@ public interface IFileSystem extends Closeable {
      * @throws FileNotFoundException if specified file was not found
      * @throws WriteException        if specified file is not available for writing (e.g. file is a directory)
      */
-    void write(IFile file, byte[] content) throws IOException;
+    void write(VirtualFile file, byte[] content) throws IOException;
 
     /**
      * Reads file content and return it
@@ -39,7 +39,7 @@ public interface IFileSystem extends Closeable {
      * @throws FileNotFoundException if specified file was not found
      * @throws ReadException         if specified file is not available for reading (e.g. file is a directory)
      */
-    byte[] read(IFile file) throws IOException;
+    byte[] read(VirtualFile file) throws IOException;
 
     /**
      * Reads file content and return it
@@ -50,7 +50,7 @@ public interface IFileSystem extends Closeable {
      * @throws FileNotFoundException if specified file was not found
      * @throws ReadException         if specified file is not available for reading (e.g. file is a directory)
      */
-    String readAsString(IFile file) throws IOException;
+    String readAsString(VirtualFile file) throws IOException;
 
     /**
      * creates a new directory in file system and return it
@@ -63,7 +63,7 @@ public interface IFileSystem extends Closeable {
      * @throws FileNotFoundException  if parent directory was not found
      * @throws CreateFileException    if parent object is not directory
      */
-    IFile createDirectory(IFile parent, String newDirectoryName) throws IOException;
+    VirtualFile createDirectory(VirtualFile parent, String newDirectoryName) throws IOException;
 
     /**
      * creates a new file in file system and return it
@@ -76,7 +76,7 @@ public interface IFileSystem extends Closeable {
      * @throws FileNotFoundException  if parent directory was not found
      * @throws CreateFileException    if parent object is not directory
      */
-    IFile createFile(IFile parent, String newFileName) throws IOException;
+    VirtualFile createFile(VirtualFile parent, String newFileName) throws IOException;
 
     /**
      * removes a specified file
@@ -85,14 +85,14 @@ public interface IFileSystem extends Closeable {
      * @throws IOException           on any default IO error
      * @throws FileNotFoundException if specified file was not found
      */
-    void removeFile(IFile file) throws IOException;
+    void removeFile(VirtualFile file) throws IOException;
 
     /**
      * @param file specified directory
      * @return true, is specified directory exist. Otherwise return false
      * @throws IOException on any default IO error
      */
-    boolean isDirectoryExist(IFile file) throws IOException;
+    boolean isDirectoryExist(VirtualFile file) throws IOException;
 
     /**
      * return a list of files and directories in specify directory
@@ -102,6 +102,6 @@ public interface IFileSystem extends Closeable {
      * @throws FileNotFoundException if directory was not found
      * @throws IOException           on any default IO error
      */
-    List<String> getFilesList(IFile directory) throws IOException;
+    List<String> getFilesList(VirtualFile directory) throws IOException;
 
 }

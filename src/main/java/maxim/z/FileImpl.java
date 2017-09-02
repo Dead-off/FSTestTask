@@ -5,36 +5,36 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.stream.Collectors;
 
-public class File implements IFile {
+public class FileImpl implements VirtualFile {
 
     private final List<String> directories;
 
-    private File() {
+    private FileImpl() {
         this.directories = new ArrayList<>();
     }
 
-    public static File rootInstance() {
-        return new File();
+    public static FileImpl rootInstance() {
+        return new FileImpl();
     }
 
-    static File fromPath(String path) {
-        File pathFile = new File();
+    static FileImpl fromPath(String path) {
+        FileImpl pathFile = new FileImpl();
         pathFile.directories.addAll(Arrays.stream(path.split(FSConstants.DIRECTORIES_SEPARATOR))
                 .filter(s -> !s.isEmpty()).collect(Collectors.toList()));
         return pathFile;
     }
 
     @Override
-    public File child(String name) {
-        File child = new File();
+    public FileImpl child(String name) {
+        FileImpl child = new FileImpl();
         child.directories.addAll(directories);
         child.directories.add(name);
         return child;
     }
 
     @Override
-    public File parent() {
-        File result = new File();
+    public FileImpl parent() {
+        FileImpl result = new FileImpl();
         result.directories.addAll(this.directories);
         if (result.isRootFile()) {
             return result;

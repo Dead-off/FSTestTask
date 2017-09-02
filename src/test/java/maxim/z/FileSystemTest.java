@@ -32,7 +32,7 @@ public class FileSystemTest {
     @Test
     public void initTest() throws IOException {
         BytesReaderWriter brw = new MemoryReaderWriter(0);
-        IFileSystem fs = FileSystemFactory.getFileSystem(brw);
+        VirtualFileSystem fs = FileSystemFactory.getFileSystem(brw);
         byte[] actual = new byte[FSConstants.Offsets.FAT_TABLE + FSConstants.DEFAULT_CLUSTER_COUNT * FSConstants.BYTE_DEPTH + FSConstants.DEFAULT_CLUSTER_SIZE];
         byte[] expected = getCopyOfEmptyRootArray();
         brw.seek(0);
@@ -43,12 +43,12 @@ public class FileSystemTest {
     @Test
     public void fsTest() throws IOException {
         BytesReaderWriter brw = new MemoryReaderWriter(0);
-        IFileSystem fs = FileSystemFactory.getFileSystem(brw);
-        File root = File.rootInstance();
+        VirtualFileSystem fs = FileSystemFactory.getFileSystem(brw);
+        FileImpl root = FileImpl.rootInstance();
         assertEquals(0, fs.getFilesList(root).size());
-        IFile testFile = fs.createFile(root, "testFile");
+        VirtualFile testFile = fs.createFile(root, "testFile");
         assertEquals(1, fs.getFilesList(root).size());
-        IFile testDirectory = fs.createDirectory(root, "testDirectory");
+        VirtualFile testDirectory = fs.createDirectory(root, "testDirectory");
         assertEquals(2, fs.getFilesList(root).size());
         String contentString = "abcd";
         fs.write(testFile, contentString);
@@ -56,10 +56,10 @@ public class FileSystemTest {
         fs.removeFile(testFile);
         assertEquals(1, fs.getFilesList(root).size());
         assertEquals(0, fs.getFilesList(testDirectory).size());
-        IFile dirLevel2 = fs.createDirectory(testDirectory, "dir");
+        VirtualFile dirLevel2 = fs.createDirectory(testDirectory, "dir");
         assertEquals(1, fs.getFilesList(root).size());
         assertEquals(1, fs.getFilesList(testDirectory).size());
-        IFile fileLevel2 = fs.createFile(dirLevel2, "testFile");
+        VirtualFile fileLevel2 = fs.createFile(dirLevel2, "testFile");
         assertArrayEquals(new byte[]{}, fs.read(fileLevel2));
 
         byte[] largeByteContent = new byte[FSConstants.DEFAULT_CLUSTER_SIZE * 5];
@@ -110,7 +110,7 @@ public class FileSystemTest {
         } catch (FileNotFoundException ignored) {
         }
 
-        File notExistFile = root.child("notExistDir").child("notExistFile");
+        FileImpl notExistFile = root.child("notExistDir").child("notExistFile");
         try {
             fs.removeFile(notExistFile);
             fail();
@@ -139,15 +139,15 @@ public class FileSystemTest {
             }
         }
         String absolutePathToFile = fsFile.getAbsolutePath();
-        IFile root = File.rootInstance();
+        VirtualFile root = FileImpl.rootInstance();
         String testFileNameInFS = "testfile";
         String testContent = "I am content!";
-        IFile testFile;
-        try (IFileSystem fs = FileSystemFactory.getFileSystem(absolutePathToFile)) {
+        VirtualFile testFile;
+        try (VirtualFileSystem fs = FileSystemFactory.getFileSystem(absolutePathToFile)) {
             testFile = fs.createFile(root, testFileNameInFS);
             fs.write(testFile, testContent);
         }
-        try (IFileSystem fs = FileSystemFactory.getFileSystem(absolutePathToFile)) {
+        try (VirtualFileSystem fs = FileSystemFactory.getFileSystem(absolutePathToFile)) {
             String actualContent = fs.readAsString(testFile);
             assertEquals(testContent, actualContent);
         }

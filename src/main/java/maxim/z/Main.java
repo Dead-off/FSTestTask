@@ -23,9 +23,9 @@ public class Main {
         commandsMap.put("read", Commands.READ);
         commandsMap.put("ls", Commands.LS);
         commandsMap.put("rm", Commands.RM);
-        IFile curFile = File.rootInstance();
+        VirtualFile curFile = FileImpl.rootInstance();
         printHelpMessage();
-        try (IFileSystem fs = FileSystemFactory.getFileSystem(pathToFile)) {
+        try (VirtualFileSystem fs = FileSystemFactory.getFileSystem(pathToFile)) {
             while (true) {
                 printCurrentDirectory(curFile);
                 String line = scanner.nextLine();
@@ -54,7 +54,7 @@ public class Main {
                     switch (command) {
                         case CD:
                             String dir = arg[1];
-                            IFile newCurFile = dir.equals("..") ? curFile.parent() : curFile.child(dir);
+                            VirtualFile newCurFile = dir.equals("..") ? curFile.parent() : curFile.child(dir);
                             if (!fs.isDirectoryExist(newCurFile)) {
                                 System.out.println(String.format("directory %s is not exist", newCurFile.getPath()));
                                 break;
@@ -102,7 +102,7 @@ public class Main {
         System.out.println("help - show help");
     }
 
-    private static void printCurrentDirectory(IFile directory) {
+    private static void printCurrentDirectory(VirtualFile directory) {
         System.out.print(Arrays.stream(directory.parseFileNames()).reduce((s1, s2) -> s1 + "/" + s2).orElse("") + "/ >");
     }
 

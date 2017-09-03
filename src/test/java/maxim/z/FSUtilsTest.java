@@ -1,7 +1,5 @@
 package maxim.z;
 
-import maxim.z.exceptions.IncorrectFilePath;
-import maxim.z.exceptions.IncorrectNameException;
 import org.junit.Test;
 
 import static org.junit.Assert.assertArrayEquals;
@@ -90,9 +88,13 @@ public class FSUtilsTest {
         assertEquals(true, FSUtils.isCorrectName("abc"));
         assertEquals(true, FSUtils.isCorrectName("AAabc123-_-"));
         assertEquals(false, FSUtils.isCorrectName(""));
-        assertEquals(false, FSUtils.isCorrectName("a b"));
+        assertEquals(true, FSUtils.isCorrectName("a b"));
         assertEquals(false, FSUtils.isCorrectName("  "));
         assertEquals(false, FSUtils.isCorrectName("abcdeabcdttteabcdeabcde"));
         assertEquals(true, FSUtils.isCorrectName("abcdeabcdeabcdeabcde"));
+        assertEquals(true, FSUtils.isCorrectName("abcdeabcd abcdeabcde"));
+        assertEquals(true, FSUtils.isCorrectName("abcdeabcdabcdeabcde "));
+        assertEquals(false, FSUtils.isCorrectName(" bcdeabcdabcdeabcde "));
+        assertEquals(false, FSUtils.isCorrectName("abcdeabcda bcdeabcde "));
     }
 }

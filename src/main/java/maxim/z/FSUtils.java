@@ -1,6 +1,7 @@
 package maxim.z;
 
 import java.nio.ByteBuffer;
+import java.util.Arrays;
 import java.util.regex.Pattern;
 
 class FSUtils {
@@ -30,6 +31,10 @@ class FSUtils {
 
     static boolean isCorrectName(String name) {
         return NAME_PATTERN.matcher(name).matches();
+    }
+
+    static String[] parseFileNames(VirtualFile file) {
+        return Arrays.stream(file.getPath().split(FSConstants.DIRECTORIES_SEPARATOR)).filter(s -> !s.isEmpty()).toArray(String[]::new);
     }
 
 }

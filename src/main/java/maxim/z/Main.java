@@ -23,9 +23,9 @@ public class Main {
         commandsMap.put("read", Commands.READ);
         commandsMap.put("ls", Commands.LS);
         commandsMap.put("rm", Commands.RM);
-        VirtualFile curFile = FileImpl.rootInstance();
         printHelpMessage();
         try (VirtualFileSystem fs = FileSystemFactory.getFileSystem(pathToFile)) {
+            VirtualFile curFile = fs.getRootFile();
             while (true) {
                 printCurrentDirectory(curFile);
                 String line = scanner.nextLine();
@@ -103,7 +103,7 @@ public class Main {
     }
 
     private static void printCurrentDirectory(VirtualFile directory) {
-        System.out.print(Arrays.stream(directory.parseFileNames()).reduce((s1, s2) -> s1 + "/" + s2).orElse("") + "/ >");
+        System.out.print(directory.getPath()+ "/ >");
     }
 
     enum Commands {

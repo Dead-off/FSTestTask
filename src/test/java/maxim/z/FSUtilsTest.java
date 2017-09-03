@@ -40,6 +40,28 @@ public class FSUtilsTest {
         assertArrayEquals(expected, actual);
     }
 
+    @Test
+    public void parseFileNamesTest() {
+        VirtualFile file = FileImpl.fromPath("test/from", null);
+        String[] actual = FSUtils.parseFileNames(file);
+        String[] expected = new String[]{"test", "from"};
+        assertArrayEquals(expected, actual);
+
+        file = FileImpl.fromPath("test/from/test1", null);
+        actual = FSUtils.parseFileNames(file);
+        expected = new String[]{"test", "from", "test1"};
+        assertArrayEquals(expected, actual);
+
+        file = FileImpl.fromPath("", null);
+        actual = FSUtils.parseFileNames(file);
+        expected = new String[]{};
+        assertArrayEquals(expected, actual);
+
+        file = FileImpl.fromPath("abcd", null);
+        actual = FSUtils.parseFileNames(file);
+        expected = new String[]{"abcd"};
+        assertArrayEquals(expected, actual);
+    }
 
     @Test
     public void writeIntAsBytesToArrayTest() {

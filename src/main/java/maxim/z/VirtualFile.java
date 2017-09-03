@@ -1,5 +1,11 @@
 package maxim.z;
 
+import maxim.z.exceptions.CreateFileException;
+import maxim.z.exceptions.FileNotFoundException;
+import maxim.z.exceptions.IncorrectNameException;
+
+import java.io.IOException;
+
 /**
  * Support object for create file pointers for file system method {@link VirtualFileSystem}
  */
@@ -26,8 +32,38 @@ public interface VirtualFile {
     String getPath();
 
     /**
-     * @return names of files/directories for current file
+     * @return name of current file
      */
-    String[] parseFileNames();
+    String getName();
+
+    /**
+     * create new file in a file system
+     *
+     * @throws IncorrectNameException if name contains forbidden symbols
+     * @throws FileNotFoundException  if parent directory was not found
+     * @throws CreateFileException    if parent object is not directory
+     * @throws IOException            on any default IO error
+     *
+     */
+    void createFile() throws IOException;
+
+    /**
+     * create new directory in a file system
+     *
+     * @throws IncorrectNameException if name contains forbidden symbols
+     * @throws FileNotFoundException  if parent directory was not found
+     * @throws CreateFileException    if parent object is not directory
+     * @throws IOException            on any default IO error
+     *
+     */
+    void createDirectory() throws IOException;
+
+    /**
+     * remove a file
+     *
+     * @throws IOException           on any default IO error
+     * @throws FileNotFoundException if specified file was not found
+     */
+    void remove() throws IOException;
 
 }

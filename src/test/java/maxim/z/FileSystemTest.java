@@ -44,7 +44,7 @@ public class FileSystemTest {
     public void fsTest() throws IOException {
         BytesReaderWriter brw = new MemoryReaderWriter(0);
         VirtualFileSystem fs = FileSystemFactory.getFileSystem(brw);
-        FileImpl root = FileImpl.rootInstance();
+        VirtualFile root = fs.getRootFile();
         assertEquals(0, fs.getFilesList(root).size());
         VirtualFile testFile = fs.createFile(root, "testFile");
         assertEquals(1, fs.getFilesList(root).size());
@@ -110,7 +110,7 @@ public class FileSystemTest {
         } catch (FileNotFoundException ignored) {
         }
 
-        FileImpl notExistFile = root.child("notExistDir").child("notExistFile");
+        VirtualFile notExistFile = root.child("notExistDir").child("notExistFile");
         try {
             fs.removeFile(notExistFile);
             fail();
@@ -139,12 +139,11 @@ public class FileSystemTest {
             }
         }
         String absolutePathToFile = fsFile.getAbsolutePath();
-        VirtualFile root = FileImpl.rootInstance();
         String testFileNameInFS = "testfile";
         String testContent = "I am content!";
         VirtualFile testFile;
         try (VirtualFileSystem fs = FileSystemFactory.getFileSystem(absolutePathToFile)) {
-            testFile = fs.createFile(root, testFileNameInFS);
+            testFile = fs.createFile(fs.getRootFile(), testFileNameInFS);
             fs.write(testFile, testContent);
         }
         try (VirtualFileSystem fs = FileSystemFactory.getFileSystem(absolutePathToFile)) {

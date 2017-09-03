@@ -6,7 +6,7 @@ import java.io.Closeable;
 import java.io.IOException;
 import java.util.List;
 
-public interface VirtualFileSystem extends Closeable {
+public abstract class VirtualFileSystem implements Closeable {
 
     /**
      * Overrides data of specified file by specified content.
@@ -17,7 +17,7 @@ public interface VirtualFileSystem extends Closeable {
      * @throws FileNotFoundException if specified file was not found
      * @throws WriteException        if specified file is not available for writing (e.g. file is a directory)
      */
-    void write(VirtualFile file, String content) throws IOException;
+    abstract void write(VirtualFile file, String content) throws IOException;
 
     /**
      * Overrides data of specified file by specified content.
@@ -28,7 +28,7 @@ public interface VirtualFileSystem extends Closeable {
      * @throws FileNotFoundException if specified file was not found
      * @throws WriteException        if specified file is not available for writing (e.g. file is a directory)
      */
-    void write(VirtualFile file, byte[] content) throws IOException;
+    abstract void write(VirtualFile file, byte[] content) throws IOException;
 
     /**
      * Reads file content and return it
@@ -39,7 +39,7 @@ public interface VirtualFileSystem extends Closeable {
      * @throws FileNotFoundException if specified file was not found
      * @throws ReadException         if specified file is not available for reading (e.g. file is a directory)
      */
-    byte[] read(VirtualFile file) throws IOException;
+    abstract byte[] read(VirtualFile file) throws IOException;
 
     /**
      * Reads file content and return it
@@ -50,7 +50,7 @@ public interface VirtualFileSystem extends Closeable {
      * @throws FileNotFoundException if specified file was not found
      * @throws ReadException         if specified file is not available for reading (e.g. file is a directory)
      */
-    String readAsString(VirtualFile file) throws IOException;
+    abstract String readAsString(VirtualFile file) throws IOException;
 
     /**
      * creates a new directory in file system and return it
@@ -63,7 +63,7 @@ public interface VirtualFileSystem extends Closeable {
      * @throws FileNotFoundException  if parent directory was not found
      * @throws CreateFileException    if parent object is not directory
      */
-    VirtualFile createDirectory(VirtualFile parent, String newDirectoryName) throws IOException;
+    abstract VirtualFile createDirectory(VirtualFile parent, String newDirectoryName) throws IOException;
 
     /**
      * creates a new file in file system and return it
@@ -76,7 +76,7 @@ public interface VirtualFileSystem extends Closeable {
      * @throws FileNotFoundException  if parent directory was not found
      * @throws CreateFileException    if parent object is not directory
      */
-    VirtualFile createFile(VirtualFile parent, String newFileName) throws IOException;
+    abstract VirtualFile createFile(VirtualFile parent, String newFileName) throws IOException;
 
     /**
      * removes a specified file
@@ -85,14 +85,14 @@ public interface VirtualFileSystem extends Closeable {
      * @throws IOException           on any default IO error
      * @throws FileNotFoundException if specified file was not found
      */
-    void removeFile(VirtualFile file) throws IOException;
+    abstract void removeFile(VirtualFile file) throws IOException;
 
     /**
      * @param file specified directory
      * @return true, is specified directory exist. Otherwise return false
      * @throws IOException on any default IO error
      */
-    boolean isDirectoryExist(VirtualFile file) throws IOException;
+    abstract boolean isDirectoryExist(VirtualFile file) throws IOException;
 
     /**
      * return a list of files and directories in specify directory
@@ -102,6 +102,12 @@ public interface VirtualFileSystem extends Closeable {
      * @throws FileNotFoundException if directory was not found
      * @throws IOException           on any default IO error
      */
-    List<String> getFilesList(VirtualFile directory) throws IOException;
+    abstract List<String> getFilesList(VirtualFile directory) throws IOException;
+
+    /**
+     * return root file instance for current file system
+     * @return root file instance
+     */
+    public abstract VirtualFile getRootFile();
 
 }

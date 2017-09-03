@@ -9,6 +9,7 @@ import java.util.Collections;
 import java.util.List;
 
 import static maxim.z.FSUtils.intAsFourBytes;
+import static maxim.z.FSUtils.parseFileNames;
 
 /**
  * Implementation of virtual file system, that store all data in a single real file.
@@ -29,7 +30,7 @@ import static maxim.z.FSUtils.intAsFourBytes;
  * for files ("is directory attribute - false") data it just file content. For directories each 4 bytes is
  * cluster index of child file.
  */
-public class FileSystemImpl implements VirtualFileSystem {
+public class FileSystemImpl extends VirtualFileSystem {
 
     private final BytesReaderWriter readerWriter;
     private final int clusterCount;
@@ -225,6 +226,11 @@ public class FileSystemImpl implements VirtualFileSystem {
         return parent.child(newFileName);
     }
 
+    @Override
+    public VirtualFile getRootFile() {
+        return FileImpl.rootInstance(this);
+    }
+
     /**
      * @param file specified directory
      * @return true, is specified directory exist. Otherwise return false
@@ -406,7 +412,7 @@ public class FileSystemImpl implements VirtualFileSystem {
     }
 
     private int findFileCluster(VirtualFile file) throws IOException {
-        String[] dirNames = file.parseFileNames();
+        String[] dirNames = parseFileNames(file);
         int rootCluster = 0;
         if (dirNames.length == 0) {
             return rootCluster;

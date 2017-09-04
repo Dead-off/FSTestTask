@@ -119,6 +119,13 @@ public abstract class VirtualFileSystem implements Closeable {
     abstract boolean isDirectoryExist(VirtualFile file) throws IOException;
 
     /**
+     * @param file specified file or directory
+     * @return true, if specified file/directory exist. Otherwise false.
+     * @throws IOException
+     */
+    abstract boolean exist(VirtualFile file) throws IOException;
+
+    /**
      * return a list of files and directories in specify directory
      *
      * @param directory directory for get files list

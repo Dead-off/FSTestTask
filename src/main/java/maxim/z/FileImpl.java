@@ -92,4 +92,14 @@ public class FileImpl implements VirtualFile {
     public VirtualOutputStream getOutputStream() {
         return new OutputStreamImpl(fs, this);
     }
+
+    @Override
+    public boolean exist() throws IOException {
+        return fs.exist(this);
+    }
+
+    @Override
+    public List<VirtualFile> children() throws IOException {
+        return fs.getFilesList(this).stream().map(s -> FileImpl.fromPath(s, this.fs)).collect(Collectors.toList());
+    }
 }

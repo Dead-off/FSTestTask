@@ -5,6 +5,7 @@ import maxim.z.exceptions.FileNotFoundException;
 import maxim.z.exceptions.IncorrectNameException;
 
 import java.io.IOException;
+import java.util.List;
 
 /**
  * Support object for create file pointers for file system method {@link VirtualFileSystem}
@@ -66,8 +67,26 @@ public interface VirtualFile {
      */
     void remove() throws IOException;
 
+    /**
+     * @return new input stream instance for reading data
+     */
     VirtualInputStream getInputStream();
 
+    /**
+     * @return new output stream instance for writing data
+     */
     VirtualOutputStream getOutputStream();
+
+    /**
+     * @return true, if this file exist, otherwise false
+     * @throws IOException   on any default IO error
+     */
+    boolean exist() throws IOException;
+
+    /**
+     * @return true, if this file exist, otherwise false
+     * @throws IOException   on any default IO error
+     */
+    List<VirtualFile> children() throws IOException;
 
 }

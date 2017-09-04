@@ -46,8 +46,10 @@ public class FileSystemTest {
         BytesReaderWriter brw = new MemoryReaderWriter(0);
         VirtualFileSystem fs = FileSystemFactory.getFileSystem(brw);
         VirtualFile root = fs.getRootFile();
-        assertEquals(0, fs.getFilesList(root).size());
+        assertEquals(0, root.children().size());
+        assertFalse(root.child("testFile").exist());
         VirtualFile testFile = fs.createFile(root, "testFile");
+        assertTrue(testFile.exist());
         assertEquals(1, fs.getFilesList(root).size());
         VirtualFile testDirectory = fs.createDirectory(root, "testDirectory");
         assertEquals(2, fs.getFilesList(root).size());

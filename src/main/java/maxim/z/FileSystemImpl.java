@@ -258,6 +258,16 @@ public class FileSystemImpl extends VirtualFileSystem {
         return getFileEntryFromCluster(fileCluster).isDirectory;
     }
 
+    @Override
+    boolean exist(VirtualFile file) throws IOException {
+        try {
+            findFileCluster(file);
+        } catch (FileNotFoundException e) {
+            return false;
+        }
+        return true;
+    }
+
     private void checkName(int parentCluster, String name) throws IOException {
         if (!FSUtils.isCorrectName(name)) {
             throw new IncorrectNameException(String.format("File name can contains only letters, numbers, hyphen and underscore. " +

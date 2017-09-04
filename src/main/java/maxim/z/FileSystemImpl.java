@@ -507,19 +507,6 @@ public class FileSystemImpl extends VirtualFileSystem {
             boolean isFirstIteration = (readBytesCount == 0);
             int availableBytesInCluster = clusterSize - (isFirstIteration ? firstIndexForRead : 0);
             int bytesToRead = Math.min(availableBytesInCluster, result.length-readBytesCount);
-//            if (isFirstIteration) {todo remove commented code
-//                if (clusterIdx == FSConstants.END_OF_CHAIN) {
-//                    bytesToRead = (file.size - (offset%clusterSize));
-//                } else {
-//                    bytesToRead = clusterSize - firstIndexForRead;
-//                }
-//            } else {
-//                if (clusterIdx == FSConstants.END_OF_CHAIN) {
-//                    bytesToRead = file.size;
-//                } else {
-//                    bytesToRead = clusterSize;
-//                }
-//            }
             byte[] currentClusterData = new byte[bytesToRead];
             readerWriter.seekAndRead(currentClusterData,
                     nextClusterOffset + (isFirstIteration ? firstIndexForRead : 0));

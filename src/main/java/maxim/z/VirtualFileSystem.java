@@ -30,7 +30,16 @@ public abstract class VirtualFileSystem implements Closeable {
      */
     abstract void write(VirtualFile file, byte[] content) throws IOException;
 
-    // TODO: 03.09.2017 javadoc
+    /**
+     * Overrides data of specified file starting from offset by specified content.
+     *
+     * @param file    file for writing data
+     * @param content bytes, that must written to file
+     * @param offset offset for writing bytes
+     * @throws IOException           on any default IO error
+     * @throws FileNotFoundException if specified file was not found
+     * @throws WriteException        if specified file is not available for writing (e.g. file is a directory)
+     */
     abstract void write(VirtualFile file, int offset, byte[] content) throws IOException;
 
     /**
@@ -44,13 +53,13 @@ public abstract class VirtualFileSystem implements Closeable {
      */
     abstract byte[] read(VirtualFile file) throws IOException;
 
-    // TODO: 03.09.2017 javadoc
     /**
-     * Reads file content part and return it. Если кол-во байтов (from+count) меньше размера файла, то размер результирующего буфера будет равен кол-ву прочитанных байт, не count
+     * Reads file content part and return it. If bytes count is more than file size,
+     * then result buffer size will be equals to file size, not count.
      *
      * @param file  file for reading data
-     * @param from
-     * @param count
+     * @param from start byte index for reading
+     * @param count count of bytes for reading
      * @return data of specified file. Byte array have array equals count, but
      * @throws IOException
      */

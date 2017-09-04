@@ -30,6 +30,9 @@ public abstract class VirtualFileSystem implements Closeable {
      */
     abstract void write(VirtualFile file, byte[] content) throws IOException;
 
+    // TODO: 03.09.2017 javadoc
+    abstract void write(VirtualFile file, int offset, byte[] content) throws IOException;
+
     /**
      * Reads file content and return it
      *
@@ -40,6 +43,18 @@ public abstract class VirtualFileSystem implements Closeable {
      * @throws ReadException         if specified file is not available for reading (e.g. file is a directory)
      */
     abstract byte[] read(VirtualFile file) throws IOException;
+
+    // TODO: 03.09.2017 javadoc
+    /**
+     * Reads file content part and return it. Если кол-во байтов (from+count) меньше размера файла, то размер результирующего буфера будет равен кол-ву прочитанных байт, не count
+     *
+     * @param file  file for reading data
+     * @param from
+     * @param count
+     * @return data of specified file. Byte array have array equals count, but
+     * @throws IOException
+     */
+    abstract byte[] read(VirtualFile file, int from, int count) throws IOException;
 
     /**
      * Reads file content and return it
@@ -106,6 +121,7 @@ public abstract class VirtualFileSystem implements Closeable {
 
     /**
      * return root file instance for current file system
+     *
      * @return root file instance
      */
     public abstract VirtualFile getRootFile();

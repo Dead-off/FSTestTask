@@ -5,6 +5,7 @@ import org.junit.Before;
 import org.junit.Test;
 
 import java.io.IOException;
+import java.util.Arrays;
 
 import static org.junit.Assert.*;
 
@@ -149,6 +150,46 @@ public class FileSystemTest {
         try (VirtualFileSystem fs = FileSystemFactory.getFileSystem(absolutePathToFile)) {
             String actualContent = fs.readAsString(testFile);
             assertEquals(testContent, actualContent);
+        }
+    }
+
+    @Test
+    public void streamsTest() throws IOException {
+        try (VirtualFileSystem fs = FileSystemFactory.getFileSystem(new MemoryReaderWriter(0))) {
+            VirtualFile test = fs.getRootFile().child("test");
+            test.createFile();
+            String content = "it is content";
+            VirtualOutputStream os = test.getOutputStream();
+            os.write("it".getBytes(FSConstants.CHARSET));
+            os.write(" is".getBytes(FSConstants.CHARSET));
+            os.write(" content".getBytes(FSConstants.CHARSET));
+            assertEquals(content, fs.readAsString(test));
+            VirtualInputStream is = test.getInputStream();
+            int countOfBytesForReading = 5;
+            byte[] firstFiveBytes = new byte[countOfBytesForReading];
+            int actualReadCount = is.read(firstFiveBytes);
+            assertEquals(countOfBytesForReading, actualReadCount);
+            byte[] allLastBytes = new byte[100];
+            actualReadCount = is.read(allLastBytes);
+            int leftBytesCount = 8;
+            assertEquals(leftBytesCount, actualReadCount);
+            String actualContent = new String(firstFiveBytes, FSConstants.CHARSET)
+                    + new String(Arrays.copyOf(allLastBytes, leftBytesCount), FSConstants.CHARSET);
+            assertEquals(content, actualContent);
+
+            VirtualFile secondTest = fs.getRootFile().child("test2");
+            secondTest.createFile();
+            os = secondTest.getOutputStream();
+            is = secondTest.getInputStream();
+            int writeBytesCount = 5000;
+            byte[] bytes = new byte[writeBytesCount];
+            bytes[2500] = 1;
+            bytes[4100] = 1;
+            os.write(bytes);
+            byte[] forReading = new byte[10000];
+            int count = is.read(forReading);
+            assertEquals(writeBytesCount, count);
+            assertArrayEquals(bytes, Arrays.copyOf(forReading, writeBytesCount));
         }
     }
 

@@ -123,6 +123,16 @@ public class FileSystemImpl extends VirtualFileSystem {
         write(file, content.getBytes(FSConstants.CHARSET));
     }
 
+    @Override
+    void write(VirtualFile file, int offset, byte[] content) throws IOException {
+        int fileCluster = findFileCluster(file);
+        FSFileEntry currentFile = getFileEntryFromCluster(fileCluster);
+        if (currentFile.isDirectory) {
+            throw new WriteException(String.format("file %s is a directory", file.getPath()));
+        }
+        write0(content, offset, currentFile);
+    }
+
     /**
      * Overrides data of specified file by specified content.
      *
@@ -134,37 +144,32 @@ public class FileSystemImpl extends VirtualFileSystem {
      */
     @Override
     public void write(VirtualFile file, byte[] content) throws IOException {
-        int fileCluster = findFileCluster(file);
-        FSFileEntry currentFile = getFileEntryFromCluster(fileCluster);
-        if (currentFile.isDirectory) {
-            throw new WriteException(String.format("file %s is a directory", file.getPath()));
-        }
-        write0(content, currentFile);
+        write(file, 0, content);
     }
 
-    private void write0(byte[] content, FSFileEntry currentFile) throws IOException {
-        int fileCluster = currentFile.clusterNumber;
-        currentFile.size = content.length;
-        byte[] contentWithHeader = getContentWithHeader(content, currentFile.toByteArray());
-        clearFATChain(fileCluster);
+    private void write0(byte[] content, int offset, FSFileEntry currentFile) throws IOException {
+        int firstClusterForWrite = getClusterNumberByChainNumber(currentFile, (offset + FSConstants.FILE_HEADER_LENGTH) / clusterSize);
+        int firstIndexForWrite = (offset + FSConstants.FILE_HEADER_LENGTH) % clusterSize;
+        currentFile.size = content.length + offset;
+        writeFileHeader(currentFile);
+        clearFATChain(firstClusterForWrite);
         int writeBytes = 0;
         List<Integer> usedClusterIndexes = new ArrayList<>();
-        int clusterForWrite = fileCluster;
+        int clusterForWrite = firstClusterForWrite;
         do {
-            int writeBytesCount = Math.min(clusterSize, contentWithHeader.length - writeBytes);
-            readerWriter.seekAndWrite(Arrays.copyOfRange(contentWithHeader, writeBytes, writeBytes + writeBytesCount), getClusterDataOffset(clusterForWrite));
+            boolean isFirstIteration = (writeBytes == 0);
+            int writeBytesCount = Math.min(clusterSize - (isFirstIteration ? FSConstants.FILE_HEADER_LENGTH : 0), content.length - writeBytes);
+            int writeOffsetInCurrentCluster = isFirstIteration ? firstIndexForWrite : 0;
+            readerWriter.seekAndWrite(Arrays.copyOfRange(content, writeBytes, writeBytes + writeBytesCount), getClusterDataOffset(clusterForWrite) + writeOffsetInCurrentCluster);
             usedClusterIndexes.add(clusterForWrite);
             clusterForWrite = getFirstFreeCluster(clusterForWrite + 1);
             writeBytes += writeBytesCount;
-        } while (writeBytes != contentWithHeader.length);
+        } while (writeBytes != content.length);
         createFATChain(usedClusterIndexes);
     }
 
-    private byte[] getContentWithHeader(byte[] content, byte[] header) {
-        byte[] result = new byte[content.length + FSConstants.FILE_HEADER_LENGTH];
-        System.arraycopy(content, 0, result, FSConstants.FILE_HEADER_LENGTH, content.length);
-        System.arraycopy(header, 0, result, 0, header.length);
-        return result;
+    private void writeFileHeader(FSFileEntry file) throws IOException {
+        readerWriter.seekAndWrite(file.toByteArray(), getClusterDataOffset(file.clusterNumber));
     }
 
     /**
@@ -183,7 +188,13 @@ public class FileSystemImpl extends VirtualFileSystem {
         if (fileEntry.isDirectory) {
             throw new ReadException(String.format("file %s is a directory", file.getPath()));
         }
-        return getFileContent(fileCluster);
+        return read(file, 0, fileEntry.size);
+    }
+
+    @Override
+    byte[] read(VirtualFile file, int from, int count) throws IOException {
+        FSFileEntry fileEntry = getFileEntryFromCluster(findFileCluster(file));
+        return getFileContent(fileEntry, from, count);
     }
 
     /**
@@ -265,7 +276,7 @@ public class FileSystemImpl extends VirtualFileSystem {
         byte[] newContent = Arrays.copyOf(currentBytes, currentBytes.length + 4);
         byte[] pointerToNewFile = intAsFourBytes(fileCluster);
         System.arraycopy(pointerToNewFile, 0, newContent, currentBytes.length, pointerToNewFile.length);
-        write0(newContent, directory);
+        write0(newContent, 0, directory);
     }
 
     private void setFATClusterValue(int clusterIndex, int clusterValue) throws IOException {
@@ -358,7 +369,7 @@ public class FileSystemImpl extends VirtualFileSystem {
     private void removeFileLinkFromDirectory(int parentCluster, int fileCluster) throws IOException {
         byte[] currentContent = getFileContent(parentCluster);
         byte[] newContent = removeFileLinkFromContent(currentContent, fileCluster);
-        write0(newContent, getFileEntryFromCluster(parentCluster));
+        write0(newContent, 0, getFileEntryFromCluster(parentCluster));
     }
 
     private byte[] removeFileLinkFromContent(byte[] currentContent, int fileCluster) {
@@ -394,7 +405,7 @@ public class FileSystemImpl extends VirtualFileSystem {
         byte[] currentClusterData = new byte[clusterSize];
         readerWriter.seekAndRead(currentClusterData, getClusterDataOffset(clusterNumber));
         FSFileEntry currentFile = FSFileEntry.fromByteArray(currentClusterData);
-        byte[] content = getFileContent(currentFile, nextClusterInChain, currentClusterData);
+        byte[] content = getFileContent(currentFile, 0, currentFile.size);
         if (!currentFile.isDirectory) {
             return Collections.emptyList();
         }
@@ -431,7 +442,7 @@ public class FileSystemImpl extends VirtualFileSystem {
         readerWriter.seekAndRead(currentClusterData, getClusterDataOffset(clusterOfCurrentFile));
         FSFileEntry currentFile = FSFileEntry.fromByteArray(currentClusterData);
         checkThatFileIsNotRemoved(currentFile);
-        byte[] content = getFileContent(currentFile, nextClusterInChain, currentClusterData);
+        byte[] content = getFileContent(currentFile, 0, currentFile.size);
         List<Integer> childFilesClusters = getChildClusters(content);
         for (int clusterNum : childFilesClusters) {
             currentClusterData = new byte[clusterSize];
@@ -461,40 +472,60 @@ public class FileSystemImpl extends VirtualFileSystem {
     }
 
     private byte[] getFileContent(int clusterNumber) throws IOException {
-        int clusterOffset = getClusterFATOffset(clusterNumber);
-        int nextClusterInChain = readIntFromFsOnOffset(readerWriter, clusterOffset);
-        readerWriter.seek(getClusterDataOffset(clusterNumber));
-        byte[] currentClusterData = new byte[clusterSize];
-        readerWriter.readBytes(currentClusterData);
-        FSFileEntry currentFile = FSFileEntry.fromByteArray(currentClusterData);
-        return getFileContent(currentFile, nextClusterInChain, currentClusterData);
+        FSFileEntry currentFile = getFileEntryFromCluster(clusterNumber);
+        return getFileContent(currentFile, 0, currentFile.size);
     }
 
-    private byte[] getFileContent(FSFileEntry file, int nextCluster, byte[] clusterData) throws IOException {
-        byte[] result = new byte[file.size];
-        checkThatFileIsNotRemoved(file);
-        int firstClusterSize = (clusterSize - FSConstants.FILE_HEADER_LENGTH);
-        boolean allContentInFirstCluster = firstClusterSize > file.size;
-        System.arraycopy(clusterData, FSConstants.FILE_HEADER_LENGTH, result, 0,
-                allContentInFirstCluster ? result.length : firstClusterSize);
-        if (allContentInFirstCluster) {
-            return result;
+    private int getClusterNumberByChainNumber(FSFileEntry file, int chainNumber) throws IOException {
+        int result = file.clusterNumber;
+        while (chainNumber > 0) {
+            result = readIntFromFsOnOffset(readerWriter, getClusterFATOffset(result));
+            chainNumber--;
+
         }
-        int readBytesCount = firstClusterSize;
-        while (readBytesCount != file.size) {
-            if (nextCluster == FSConstants.END_OF_CHAIN) {
+        return result;
+    }
+
+    private byte[] getFileContent(FSFileEntry file, int offset, int count) throws IOException {
+        int resultBytesCount = Math.min(count - offset, file.size - offset);
+        if (resultBytesCount < 0) {
+            return new byte[0];
+        }
+        int firstClusterForRead = getClusterNumberByChainNumber(file, (offset + FSConstants.FILE_HEADER_LENGTH) / clusterSize);
+        int firstIndexForRead = (offset + FSConstants.FILE_HEADER_LENGTH) % clusterSize;
+        byte[] result = new byte[resultBytesCount];
+        checkThatFileIsNotRemoved(file);
+        int readBytesCount = 0;
+        int clusterIdx = firstClusterForRead;
+        do {
+            if (clusterIdx == FSConstants.END_OF_CHAIN) {
                 throw new FSFormatException("");
             }
-            int nextClusterOffset = getClusterDataOffset(nextCluster);
-            int fatClusterOffset = getClusterFATOffset(nextCluster);
-            nextCluster = readIntFromFsOnOffset(readerWriter, fatClusterOffset);
-            readerWriter.seek(nextClusterOffset);
-            byte[] currentClusterData = new byte[clusterSize];
-            readerWriter.readBytes(currentClusterData);
-            int bytesToRead = readBytesCount + clusterSize > file.size ? (file.size - readBytesCount) : clusterSize;
+            int nextClusterOffset = getClusterDataOffset(clusterIdx);
+            int fatClusterOffset = getClusterFATOffset(clusterIdx);
+            clusterIdx = readIntFromFsOnOffset(readerWriter, fatClusterOffset);
+            boolean isFirstIteration = (readBytesCount == 0);
+            int availableBytesInCluster = clusterSize - (isFirstIteration ? firstIndexForRead : 0);
+            int bytesToRead = Math.min(availableBytesInCluster, result.length-readBytesCount);
+//            if (isFirstIteration) {todo remove commented code
+//                if (clusterIdx == FSConstants.END_OF_CHAIN) {
+//                    bytesToRead = (file.size - (offset%clusterSize));
+//                } else {
+//                    bytesToRead = clusterSize - firstIndexForRead;
+//                }
+//            } else {
+//                if (clusterIdx == FSConstants.END_OF_CHAIN) {
+//                    bytesToRead = file.size;
+//                } else {
+//                    bytesToRead = clusterSize;
+//                }
+//            }
+            byte[] currentClusterData = new byte[bytesToRead];
+            readerWriter.seekAndRead(currentClusterData,
+                    nextClusterOffset + (isFirstIteration ? firstIndexForRead : 0));
             System.arraycopy(currentClusterData, 0, result, readBytesCount, bytesToRead);
             readBytesCount += bytesToRead;
-        }
+        } while (readBytesCount != result.length);
         return result;
     }
 

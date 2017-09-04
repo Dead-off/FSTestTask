@@ -82,4 +82,14 @@ public class FileImpl implements VirtualFile {
     public void remove() throws IOException {
         fs.removeFile(this);
     }
+
+    @Override
+    public VirtualInputStream getInputStream() {
+        return new InputStreamImpl(fs, this);
+    }
+
+    @Override
+    public VirtualOutputStream getOutputStream() {
+        return new OutputStreamImpl(fs, this);
+    }
 }

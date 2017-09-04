@@ -66,4 +66,8 @@ public interface VirtualFile {
      */
     void remove() throws IOException;
 
+    VirtualInputStream getInputStream();
+
+    VirtualOutputStream getOutputStream();
+
 }

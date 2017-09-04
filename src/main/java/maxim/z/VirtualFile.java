@@ -44,7 +44,6 @@ public interface VirtualFile {
      * @throws FileNotFoundException  if parent directory was not found
      * @throws CreateFileException    if parent object is not directory
      * @throws IOException            on any default IO error
-     *
      */
     void createFile() throws IOException;
 
@@ -55,7 +54,6 @@ public interface VirtualFile {
      * @throws FileNotFoundException  if parent directory was not found
      * @throws CreateFileException    if parent object is not directory
      * @throws IOException            on any default IO error
-     *
      */
     void createDirectory() throws IOException;
 
@@ -79,13 +77,13 @@ public interface VirtualFile {
 
     /**
      * @return true, if this file exist, otherwise false
-     * @throws IOException   on any default IO error
+     * @throws IOException on any default IO error
      */
     boolean exist() throws IOException;
 
     /**
      * @return true, if this file exist, otherwise false
-     * @throws IOException   on any default IO error
+     * @throws IOException on any default IO error
      */
     List<VirtualFile> children() throws IOException;
 

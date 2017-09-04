@@ -35,7 +35,7 @@ public abstract class VirtualFileSystem implements Closeable {
      *
      * @param file    file for writing data
      * @param content bytes, that must written to file
-     * @param offset offset for writing bytes
+     * @param offset  offset for writing bytes
      * @throws IOException           on any default IO error
      * @throws FileNotFoundException if specified file was not found
      * @throws WriteException        if specified file is not available for writing (e.g. file is a directory)
@@ -58,10 +58,10 @@ public abstract class VirtualFileSystem implements Closeable {
      * then result buffer size will be equals to file size, not count.
      *
      * @param file  file for reading data
-     * @param from start byte index for reading
+     * @param from  start byte index for reading
      * @param count count of bytes for reading
      * @return data of specified file. Byte array have array equals count, but
-     * @throws IOException
+     * @throws IOException on any default IO error
      */
     abstract byte[] read(VirtualFile file, int from, int count) throws IOException;
 
@@ -121,7 +121,7 @@ public abstract class VirtualFileSystem implements Closeable {
     /**
      * @param file specified file or directory
      * @return true, if specified file/directory exist. Otherwise false.
-     * @throws IOException
+     * @throws IOException on any default IO error
      */
     abstract boolean exist(VirtualFile file) throws IOException;
 

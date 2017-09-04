@@ -18,6 +18,7 @@ public interface BytesReaderWriter extends Closeable {
 
     /**
      * Read data from storage on offset, specify by seek method into array. Read bytes count coincides with data array length
+     *
      * @param data array to which data will be read
      * @throws IOException on any default IO error
      */
@@ -25,22 +26,25 @@ public interface BytesReaderWriter extends Closeable {
 
     /**
      * Combines methods read and write (seek invoke before write)
+     *
      * @param data array to which data will be read
-     * @param pos offset position in storage
+     * @param pos  offset position in storage
      * @throws IOException on any default IO error
      */
     void seekAndRead(byte[] data, long pos) throws IOException;
 
     /**
      * Combines methods seek and write (seek invoke before write)
+     *
      * @param bytes bytes for write
-     * @param pos offset position in storage
+     * @param pos   offset position in storage
      * @throws IOException on any default IO error
      */
     void seekAndWrite(byte[] bytes, long pos) throws IOException;
 
     /**
      * Set offset position in storage for write/read methods
+     *
      * @param pos offset position in storage
      * @throws IOException on any default IO error
      */

@@ -103,7 +103,7 @@ public class Main {
     }
 
     private static void printCurrentDirectory(VirtualFile directory) {
-        System.out.print(directory.getPath()+ "/ >");
+        System.out.print(directory.getPath() + " >");
     }
 
     enum Commands {

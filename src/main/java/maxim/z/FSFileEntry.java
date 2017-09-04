@@ -28,7 +28,7 @@ class FSFileEntry {
     }
 
     void remove() {
-        isRemoved=true;
+        isRemoved = true;
     }
 
     boolean isRemoved() {
